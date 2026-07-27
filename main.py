@@ -122,86 +122,18 @@ def demo_context():
     return ctx
 
 
-# --- Touch: flip to the facts flashcard -----------------------------------
-# Touch only works while awake. On USB power we stay awake (touch works
-# anytime); on battery we stay responsive for TOUCH_WINDOW seconds after
-# each render, then power off to protect battery life.
-
-TOUCH_WINDOW = 120       # seconds of touch responsiveness on battery
-FACTS_TIMEOUT = 60       # facts card flips back by itself
-
-
-def _usb_powered():
-    try:
-        import M5
-        return bool(M5.Power.isCharging())
-    except Exception:
-        return False
-
-
-def _touched():
-    try:
-        import M5
-        M5.update()
-        return M5.Touch.getCount() > 0
-    except Exception:
-        return False
-
-
-def _wait_release():
-    while _touched():
-        time.sleep(0.05)
-
-
-def interactive_wait(result):
-    """Poll for taps until it's time for the next update (USB) or the
-    touch window closes (battery)."""
-    ctx = result[0]
-    showing_facts = False
-    facts_at = 0
-    start = time.time()
-    wake_at = start + scheduler.seconds_until_next_update()
-
-    while True:
-        now = time.time()
-        if now >= wake_at:
-            return                      # hourly update is due
-        if (not showing_facts and not _usb_powered()
-                and now - start > TOUCH_WINDOW):
-            scheduler.sleep_until_next_update()
-            return
-        if _touched():
-            _wait_release()
-            showing_facts = not showing_facts
-            cv = ui_renderer.make_canvas()
-            if showing_facts:
-                ui_renderer.render_facts(cv, ctx)
-                facts_at = time.time()
-            else:
-                ui_renderer.render(cv, ctx, *result[1:])
-        elif showing_facts and now - facts_at > FACTS_TIMEOUT:
-            showing_facts = False
-            cv = ui_renderer.make_canvas()
-            ui_renderer.render(cv, ctx, *result[1:])
-        time.sleep(0.05)
-
-
 def run_forever():
     while True:
-        result = None
         try:
             if is_quiet_hour():
                 print("quiet hours: skipping update")
             else:
-                result = update_display()
+                update_display()
         except Exception as e:
             # Never brick the loop: leave the last good image on the
             # e-ink (it persists unpowered) and try again next hour.
             print("update failed:", e)
-        if result and MICROPYTHON:
-            interactive_wait(result)
-        else:
-            scheduler.sleep_until_next_update()
+        scheduler.sleep_until_next_update()
 
 
 if __name__ == "__main__":

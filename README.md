@@ -90,18 +90,6 @@ built-in `urequests`.
   `scoring_engine._headline_rules()` — first match wins.
 - **New glyph**: add a draw function to `artwork.GLYPHS`.
 
-## The flashcard
-
-Tap the display to flip it over: the back side shows today in plain
-facts (temperature, high/low, sky, rain chance, humidity, wind,
-sunrise/sunset, daylight length, moon phase, day-of-year). Tap again
-— or wait 60 seconds — to flip back.
-
-Touch only works while the board is awake. On USB power it stays
-awake, so the flashcard works anytime. On battery it stays
-touch-responsive for ~2 minutes after each hourly refresh, then
-powers fully off (the RTC can't wake on touch).
-
 ## Design notes
 
 - One full e-ink refresh per hour (clears ghosting; the flash is a
