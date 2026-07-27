@@ -25,6 +25,7 @@ class UIFlow2Canvas:
 
     BLACK = 0x000000
     WHITE = 0xFFFFFF
+    SHADES = {"black": 0x000000, "gray": 0x555555, "light": 0x999999}
 
     def __init__(self):
         import M5
@@ -44,8 +45,13 @@ class UIFlow2Canvas:
             24: Widgets.FONTS.DejaVu24,
             18: Widgets.FONTS.DejaVu18,
         }
+        self._ink = self.BLACK
         self.lcd.setTextColor(self.BLACK, self.WHITE)
         self.lcd.fillScreen(self.WHITE)
+
+    def ink(self, shade):
+        self._ink = self.SHADES.get(shade, self.BLACK)
+        self.lcd.setTextColor(self._ink, self.WHITE)
 
     def _set_font(self, size):
         for pt in (72, 56, 40, 24, 18):
@@ -57,6 +63,17 @@ class UIFlow2Canvas:
         self._set_font(size)
         self.lcd.drawString(s, x, y)
 
+    def text3d(self, x, y, s, size, depth=3):
+        """Blocky drop-shadow lettering: gray shadow, black face."""
+        self._set_font(size)
+        keep = self._ink
+        self.lcd.setTextColor(self.SHADES["light"], self.WHITE)
+        for d in range(depth, 0, -1):
+            self.lcd.drawString(s, x + d, y + d)
+        self.lcd.setTextColor(self.BLACK, self.WHITE)
+        self.lcd.drawString(s, x, y)
+        self.lcd.setTextColor(keep, self.WHITE)
+
     def text_width(self, s, size):
         self._set_font(size)
         try:
@@ -65,13 +82,13 @@ class UIFlow2Canvas:
             return int(len(s) * size * 0.6)
 
     def line(self, x0, y0, x1, y1):
-        self.lcd.drawLine(x0, y0, x1, y1, self.BLACK)
+        self.lcd.drawLine(x0, y0, x1, y1, self._ink)
 
     def circle(self, x, y, r):
-        self.lcd.drawCircle(x, y, r, self.BLACK)
+        self.lcd.drawCircle(x, y, r, self._ink)
 
     def fill_circle(self, x, y, r):
-        self.lcd.fillCircle(x, y, r, self.BLACK)
+        self.lcd.fillCircle(x, y, r, self._ink)
 
     def fill_circle_white(self, x, y, r):
         self.lcd.fillCircle(x, y, r, self.WHITE)
@@ -95,6 +112,12 @@ class M5PaperCanvas:
         from m5stack import lcd  # noqa: UIFlow M5Paper firmware
         self.lcd = lcd
         lcd.clear(lcd.WHITE)
+
+    def ink(self, shade):
+        pass  # legacy backend draws everything in black
+
+    def text3d(self, x, y, s, size, depth=3):
+        self.text(x, y, s, size)
 
     def text(self, x, y, s, size):
         # UIFlow bundles DejaVu fonts at fixed sizes; pick nearest.
@@ -135,8 +158,14 @@ class TextCanvas:
     def __init__(self):
         self.lines = []
 
+    def ink(self, shade):
+        pass
+
     def text(self, x, y, s, size):
         self.lines.append((y, x, s, size))
+
+    def text3d(self, x, y, s, size, depth=3):
+        self.text(x, y, s, size)
 
     def text_width(self, s, size):
         return int(len(s) * size * 0.6)
@@ -186,6 +215,11 @@ def _center(cv, y, s, size):
     cv.text(max(0, x), y, s, size)
 
 
+def _center3d(cv, y, s, size, depth=3):
+    x = (W - cv.text_width(s, size)) // 2
+    cv.text3d(max(0, x), y, s, size, depth)
+
+
 def _wrap(text, max_chars):
     """Greedy word wrap."""
     lines, cur = [], ""
@@ -202,12 +236,49 @@ def _wrap(text, max_chars):
     return lines
 
 
+def _sun_arc(cv, ctx):
+    """Dotted horizon arc with the sun at its real position along the
+    day. At night the arc rests empty and the moon phase takes over."""
+    import math
+
+    cx, cy, r = W // 2, 912, 84
+    is_day = ctx["sunrise_minutes"] <= ctx["now_minutes"] \
+        <= ctx["sunset_minutes"]
+
+    # dotted arc
+    cv.ink("light")
+    for i in range(25):
+        a = math.pi * i / 24.0
+        cv.fill_circle(int(cx + r * math.cos(a)),
+                       int(cy - r * math.sin(a)), 2)
+    # horizon line
+    cv.line(cx - r - 46, cy, cx - r - 6, cy)
+    cv.line(cx + r + 6, cy, cx + r + 46, cy)
+
+    if is_day:
+        span = max(1, ctx["sunset_minutes"] - ctx["sunrise_minutes"])
+        p = (ctx["now_minutes"] - ctx["sunrise_minutes"]) / span
+        a = math.pi * (1.0 - p)
+        sx = int(cx + r * math.cos(a))
+        sy = int(cy - r * math.sin(a))
+        cv.ink("black")
+        cv.fill_circle(sx, sy, 8)
+    else:
+        cv.ink("gray")
+        _center(cv, cy - 52, ctx["moon_name"].upper(), 18)
+
+    # times anchored to the arc's feet
+    cv.ink("gray")
+    cv.text(cx - r - 46, cy + 14, ctx["sunrise"], 18)
+    sw = cv.text_width(ctx["sunset"], 18)
+    cv.text(cx + r + 46 - sw, cy + 14, ctx["sunset"], 18)
+
+
 def render(cv, ctx, score, headline_text, activities, wonder_text):
     """V2 layout: facts first, wonder second, lots of air.
 
-    One centered column, five moments top to bottom:
-      date -> score+headline -> weather glyph -> THE WONDER -> gentle
-      suggestions -> one sun fact.
+    Grayscale hierarchy: black for what matters (score, headline,
+    wonder, suggestions), soft gray for context (date, temp, times).
     """
     is_night = (ctx["now_minutes"] > ctx["sunset_minutes"]
                 or ctx["now_minutes"] < 5 * 60)
@@ -215,36 +286,51 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     # --- Date ---------------------------------------------------------
     date_str = "%s, %s %d" % (ctx["weekday_name"], ctx["month_name"],
                               ctx["day"])
-    _center(cv, 45, date_str.upper(), 18)
+    cv.ink("gray")
+    _center(cv, 40, date_str.upper(), 18)
 
-    # --- Score + headline ----------------------------------------------
-    _center(cv, 115, "%d/100" % score, 72)
-    _center(cv, 230, headline_text, 40)
+    # --- Score medallion ------------------------------------------------
+    mx, my, mr = W // 2, 190, 100
+    cv.ink("light")
+    cv.circle(mx, my, mr)
+    cv.circle(mx, my, mr - 1)
+    cv.ink("black")
+    _center3d(cv, my - 55, str(score), 72, depth=4)
+    cv.ink("gray")
+    _center(cv, my + 38, "OF 100", 18)
+
+    # --- Headline ---------------------------------------------------------
+    cv.ink("black")
+    _center3d(cv, 330, headline_text, 40, depth=3)
 
     # --- Weather glyph, temp as quiet context ---------------------------
-    artwork.draw(cv, ctx["condition"], W // 2, 380, 140, is_night)
-    _center(cv, 470, "%d\xb0" % round(ctx["temp"]), 24)
+    artwork.draw(cv, ctx["condition"], W // 2, 455, 130, is_night)
+    cv.ink("gray")
+    _center(cv, 528, "%d\xb0" % round(ctx["temp"]), 24)
 
     # --- The Wonder: today's one sentence worth reading ------------------
-    cv.line(W // 3, 545, 2 * W // 3, 545)
-    y = 585
+    cv.ink("light")
+    cv.line(W // 3, 580, 2 * W // 3, 580)
+    cv.ink("black")
+    y = 604
     for line in _wrap(wonder_text, 32):
         _center(cv, y, line, 24)
-        y += 40
-    cv.line(W // 3, y + 12, 2 * W // 3, y + 12)
+        y += 38
+    cv.ink("light")
+    cv.line(W // 3, y + 8, 2 * W // 3, y + 8)
 
-    # --- Gentle suggestions ----------------------------------------------
-    y = 725
+    # --- Gentle suggestions, dotted -------------------------------------
+    y = 700
     for act in activities:
-        _center(cv, y, act, 24)
-        y += 52
+        tw = cv.text_width(act, 24)
+        x0 = (W - (tw + 22)) // 2
+        cv.ink("black")
+        cv.fill_circle(x0 + 4, y + 14, 4)
+        cv.text(x0 + 22, y, act, 24)
+        y += 48
 
-    # --- One sun fact: the next one that matters --------------------------
-    if ctx["now_minutes"] < ctx["sunset_minutes"]:
-        sun_fact = "sunset %s" % ctx["sunset"]
-    else:
-        sun_fact = "sunrise %s" % ctx["sunrise"]
-    _center(cv, 910, sun_fact.upper(), 18)
+    # --- Sun arc horizon --------------------------------------------------
+    _sun_arc(cv, ctx)
 
     cv.show()
 

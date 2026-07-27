@@ -15,17 +15,22 @@ def _thick_line(cv, x0, y0, x1, y1, w=2):
 
 def sun(cv, cx, cy, size):
     r = size // 3
-    cv.circle(cx, cy, r)
-    cv.circle(cx, cy, r - 1)
+    for rr in (r, r - 1, r - 2):
+        cv.circle(cx, cy, rr)
     gap = r + size // 8
     ray = size // 6
     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-        cv.line(cx + dx * gap, cy + dy * gap,
-                cx + dx * (gap + ray), cy + dy * (gap + ray))
+        for off in (0, 1):
+            cv.line(cx + dx * gap + (off if dy else 0),
+                    cy + dy * gap + (off if dx else 0),
+                    cx + dx * (gap + ray) + (off if dy else 0),
+                    cy + dy * (gap + ray) + (off if dx else 0))
     d = int(gap * 0.707)
     dr = int((gap + ray) * 0.707)
     for dx, dy in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
-        cv.line(cx + dx * d, cy + dy * d, cx + dx * dr, cy + dy * dr)
+        for off in (0, 1):
+            cv.line(cx + dx * d + off, cy + dy * d,
+                    cx + dx * dr + off, cy + dy * dr)
 
 
 def _cloud_shape(cv, cx, cy, size):
