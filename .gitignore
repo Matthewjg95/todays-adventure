@@ -1,0 +1,13 @@
+# Credentials — never commit
+wifi_secrets.py
+
+# Runtime artifacts (device state, cached weather)
+state.json
+last_weather.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Tooling
+.claude/
