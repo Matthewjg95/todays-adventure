@@ -61,6 +61,8 @@ def _perfect_outdoor(ctx, score):
 
 def _headline_rules():
     return (
+        (lambda c, s: c.get("is_night_watch"),
+         "WHILE THE WORLD SLEEPS"),
         (lambda c, s: c["is_first_snow"],
          "FIRST SNOW OF THE YEAR"),
         (lambda c, s: s >= 96,

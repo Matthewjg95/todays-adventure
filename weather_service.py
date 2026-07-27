@@ -199,7 +199,19 @@ def build_context(now=None, raw=None):
         # moon
         "moon_phase": phase,
         "moon_name": moon_name(phase),
+        # set True by main.py during night-watch renders
+        "is_night_watch": False,
     }
+
+    # Tomorrow's outlook (for useful night messages)
+    if len(daily["temperature_2m_max"]) > 1:
+        t_rain = daily["precipitation_probability_max"][1]
+        ctx["tomorrow"] = {
+            "high": daily["temperature_2m_max"][1],
+            "low": daily["temperature_2m_min"][1],
+            "rain_prob": t_rain if t_rain is not None else 0,
+            "condition": _condition_from_code(daily["weather_code"][1]),
+        }
 
     _apply_memory(ctx)
     return ctx

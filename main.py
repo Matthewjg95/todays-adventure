@@ -56,14 +56,17 @@ def _fingerprint(ctx, score, head, activities, wonder_text):
         ctx["condition"],
         str(int(round(ctx["temp"] / 3.0))),
         "day" if ctx["now_minutes"] < ctx["sunset_minutes"] else "night",
+        "nw%d" % ctx["hour"] if ctx.get("is_night_watch") else "",
     ))
 
 
-def update_display(ctx=None, force=False):
+def update_display(ctx=None, force=False, night_watch=False):
     if ctx is None:
         connect_wifi()
         sync_clock()
         ctx = weather_service.build_context()
+    if night_watch:
+        ctx["is_night_watch"] = True
 
     score = scoring_engine.score_day(ctx)
     ctx["score"] = score
@@ -87,8 +90,8 @@ def update_display(ctx=None, force=False):
     return ctx, score, head, activities, wonder_text
 
 
-def is_quiet_hour():
-    """Skip overnight wakes entirely (no WiFi, no refresh)."""
+def local_hour():
+    """Best-effort local hour; None if the clock isn't trustworthy."""
     if MICROPYTHON:
         raw = weather_service._load_json(config.CACHE_FILE)
         offset = raw.get("utc_offset_seconds", 0) if raw else 0
@@ -96,8 +99,13 @@ def is_quiet_hour():
     else:
         t = time.localtime()
     if t[0] < 2024:      # clock not set yet; don't trust it
+        return None
+    return t[3]
+
+
+def is_quiet_hour(hour):
+    if hour is None:
         return False
-    hour = t[3]
     if config.QUIET_START > config.QUIET_END:
         return hour >= config.QUIET_START or hour < config.QUIET_END
     return config.QUIET_START <= hour < config.QUIET_END
@@ -117,7 +125,9 @@ def demo_context():
         "weekday": 5, "weekday_name": "Saturday", "month_name": "July",
         "is_weekend": True, "season": "summer",
         "moon_phase": 0.9, "moon_name": "Waning Crescent",
-        "is_first_snow": False,
+        "is_first_snow": False, "is_night_watch": False,
+        "tomorrow": {"high": 82.0, "low": 61.0, "rain_prob": 10,
+                     "condition": "clear"},
     }
     return ctx
 
@@ -125,8 +135,12 @@ def demo_context():
 def run_forever():
     while True:
         try:
-            if is_quiet_hour():
-                print("quiet hours: skipping update")
+            hour = local_hour()
+            if is_quiet_hour(hour):
+                if hour in config.NIGHT_WAKE_HOURS:
+                    update_display(night_watch=True)
+                else:
+                    print("quiet hours: skipping update")
             else:
                 update_display()
         except Exception as e:

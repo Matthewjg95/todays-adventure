@@ -289,22 +289,27 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     cv.ink("gray")
     _center(cv, 40, date_str.upper(), 18)
 
-    # --- Score medallion ------------------------------------------------
+    # --- Medallion: the day's score, or the moon at night watch ----------
+    night_watch = ctx.get("is_night_watch")
     mx, my, mr = W // 2, 190, 100
     cv.ink("light")
     cv.circle(mx, my, mr)
     cv.circle(mx, my, mr - 1)
     cv.ink("black")
-    _center3d(cv, my - 55, str(score), 72, depth=4)
-    cv.ink("gray")
-    _center(cv, my + 38, "OF 100", 18)
+    if night_watch:
+        artwork.moon(cv, mx, my, 150)
+    else:
+        _center3d(cv, my - 55, str(score), 72, depth=4)
+        cv.ink("gray")
+        _center(cv, my + 38, "OF 100", 18)
 
     # --- Headline ---------------------------------------------------------
     cv.ink("black")
     _center3d(cv, 330, headline_text, 40, depth=3)
 
     # --- Weather glyph, temp as quiet context ---------------------------
-    artwork.draw(cv, ctx["condition"], W // 2, 455, 130, is_night)
+    if not night_watch:
+        artwork.draw(cv, ctx["condition"], W // 2, 455, 130, is_night)
     cv.ink("gray")
     _center(cv, 528, "%d\xb0" % round(ctx["temp"]), 24)
 

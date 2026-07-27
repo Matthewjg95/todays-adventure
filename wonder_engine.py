@@ -22,7 +22,15 @@ class Wonder:
 
 
 def _day_seed(ctx):
-    return ctx["year"] * 366 + ctx["month"] * 31 + ctx["day"]
+    seed = ctx["year"] * 366 + ctx["month"] * 31 + ctx["day"]
+    if ctx.get("is_night_watch"):
+        # night wakes each get their own variant, not one all night
+        seed += ctx["hour"] * 7
+    return seed
+
+
+def _tomorrow(ctx):
+    return ctx.get("tomorrow") or {}
 
 
 def _clear_evening(c):
@@ -47,6 +55,50 @@ def _solstice_equinox(c):
 
 
 WONDERS = [
+    # ---- Night watch (only during the 3 scheduled night wakes) --------
+    Wonder("umbrella warning",
+           when=lambda c: c.get("is_night_watch")
+           and _tomorrow(c).get("rain_prob", 0) >= 60,
+           messages=["Rain before breakfast. Leave the "
+                     "umbrella by the door.",
+                     "Tomorrow arrives wet. Plan a slow morning."],
+           priority=78),
+    Wonder("frost warning",
+           when=lambda c: c.get("is_night_watch")
+           and _tomorrow(c).get("low", 99) <= 34,
+           messages=["Frost by morning. The plants would "
+                     "appreciate a blanket.",
+                     "Cold night ahead. Warm socks are advised."],
+           priority=78),
+    Wonder("tomorrow snow",
+           when=lambda c: c.get("is_night_watch")
+           and _tomorrow(c).get("condition") == "snow",
+           messages=["Snow is coming while you sleep. "
+                     "Morning will look different.",
+                     "Tonight the sky is wrapping presents. "
+                     "Open the curtains first thing."],
+           priority=79),
+    Wonder("tomorrow beauty",
+           when=lambda c: c.get("is_night_watch")
+           and _tomorrow(c).get("rain_prob", 100) < 20
+           and 58 <= _tomorrow(c).get("high", 0) <= 86,
+           messages=["Tomorrow looks like a beauty. Sleep well.",
+                     "Rest up. Tomorrow is worth waking for."],
+           priority=76),
+    Wonder("night full moon",
+           when=lambda c: c.get("is_night_watch") and _full_moon(c),
+           messages=["The moon is out doing its best work "
+                     "right now."],
+           priority=74),
+    Wonder("night watch",
+           when=lambda c: c.get("is_night_watch"),
+           messages=["Still awake? So is the moon.",
+                     "The night has its own kind of quiet.",
+                     "Even the birds are asleep. "
+                     "You made it further than they did.",
+                     "Nothing needs you right now. That's rare."],
+           priority=70),
+
     Wonder("first snow",
            when=lambda c: c["is_first_snow"],
            messages=["The first snow is here.",

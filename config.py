@@ -21,8 +21,9 @@ except ImportError:
 # --- Behavior -------------------------------------------------------------
 UPDATE_INTERVAL_MINUTES = 60    # refresh cadence
 USE_FAHRENHEIT = True
-QUIET_START = 23                # no updates from this local hour...
+QUIET_START = 23                # no hourly updates from this local hour...
 QUIET_END = 5                   # ...until this one (saves battery overnight)
+NIGHT_WAKE_HOURS = (23, 1, 3)   # ...except these: night-watch renders
 
 # --- Weather API (Open-Meteo: free, no API key) ---------------------------
 WEATHER_URL = (
@@ -33,7 +34,7 @@ WEATHER_URL = (
     "&daily=sunrise,sunset,precipitation_probability_max,"
     "temperature_2m_max,temperature_2m_min,weather_code"
     "&temperature_unit=fahrenheit&wind_speed_unit=mph"
-    "&timezone={tz}&forecast_days=1"
+    "&timezone={tz}&forecast_days=2"
 )
 
 # --- Files ----------------------------------------------------------------

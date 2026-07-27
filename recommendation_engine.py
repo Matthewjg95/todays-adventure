@@ -27,7 +27,12 @@ class Rule:
     def active(self, ctx):
         if self.hours is not None:
             start, end = self.hours
-            if not (start <= ctx["hour"] < end):
+            h = ctx["hour"]
+            if start <= end:
+                inside = start <= h < end
+            else:                       # window wraps midnight
+                inside = h >= start or h < end
+            if not inside:
                 return False
         return self.when(ctx)
 
@@ -48,6 +53,12 @@ def _stargazing(c):
 
 
 RULES = [
+    # ---- Night watch -----------------------------------------------------
+    Rule("night watch",
+         when=lambda c: c.get("is_night_watch"),
+         gives=["A Glass Of Water", "One More Chapter", "Back To Bed"],
+         priority=200),
+
     # ---- Special events (footer banners) --------------------------------
     Rule("first snow",
          when=lambda c: c["is_first_snow"],
