@@ -16,6 +16,15 @@ import config
 
 W, H = 540, 960
 
+# BIG_TEXT experiment: bump every font one step up the DejaVu ladder.
+_UPSIZE = {18: 24, 24: 40, 40: 56, 56: 72, 72: 72}
+
+
+def S(size):
+    if getattr(config, "BIG_TEXT", False):
+        return _UPSIZE.get(size, size)
+    return size
+
 
 # --------------------------------------------------------------------------
 # Canvas backends
@@ -250,12 +259,13 @@ def _wrap(text, max_chars):
 
 
 def _headline(cv, text):
-    """Fit the headline: one 40pt line if it fits, else two balanced
-    40pt lines, else (single unbreakable monster) drop to 24pt."""
+    """Fit the headline, biggest first: one line at the largest size
+    that fits, else two balanced 40pt lines, else 24pt."""
     max_w = W - 28
-    if cv.text_width(text, 40) <= max_w:
-        _center3d(cv, 330, text, 40, depth=3)
-        return
+    for size in (S(40), 40):
+        if cv.text_width(text, size) <= max_w:
+            _center3d(cv, 330 - (size - 40) // 2, text, size, depth=3)
+            return
     words = text.split()
     best = None
     for i in range(1, len(words)):
@@ -300,13 +310,13 @@ def _sun_arc(cv, ctx):
         cv.fill_circle(sx, sy, 8)
     else:
         cv.ink("gray")
-        _center(cv, cy - 52, ctx["moon_name"].upper(), 18)
+        _center(cv, cy - 52, ctx["moon_name"].upper(), S(18))
 
     # times anchored to the arc's feet
     cv.ink("gray")
-    cv.text(cx - r - 46, cy + 14, ctx["sunrise"], 18)
-    sw = cv.text_width(ctx["sunset"], 18)
-    cv.text(cx + r + 46 - sw, cy + 14, ctx["sunset"], 18)
+    cv.text(cx - r - 46, cy + 14, ctx["sunrise"], S(18))
+    sw = cv.text_width(ctx["sunset"], S(18))
+    cv.text(cx + r + 46 - sw, cy + 14, ctx["sunset"], S(18))
 
 
 def render(cv, ctx, score, headline_text, activities, wonder_text):
@@ -322,7 +332,7 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     date_str = "%s, %s %d" % (ctx["weekday_name"], ctx["month_name"],
                               ctx["day"])
     cv.ink("gray")
-    _center(cv, 40, date_str.upper(), 18)
+    _center(cv, 40, date_str.upper(), S(18))
 
     # --- Medallion: the day's score, or the moon at night watch ----------
     night_watch = ctx.get("is_night_watch")
@@ -336,7 +346,7 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     else:
         _center3d(cv, my - 55, str(score), 72, depth=4)
         cv.ink("gray")
-        _center(cv, my + 38, "OF 100", 18)
+        _center(cv, my + 38, "OF 100", S(18))
 
     # --- Headline ---------------------------------------------------------
     cv.ink("black")
@@ -352,22 +362,32 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     cv.ink("light")
     cv.line(W // 3, 580, 2 * W // 3, 580)
     cv.ink("black")
+    wsize = S(24)
+    max_chars = int(470 / (wsize * 0.6))
+    lines = _wrap(wonder_text, max_chars)
+    if len(lines) > 2 and wsize > 24:
+        wsize = 24                      # long wonder: big doesn't fit
+        lines = _wrap(wonder_text, 32)
     y = 604
-    for line in _wrap(wonder_text, 32):
-        _center(cv, y, line, 24)
-        y += 38
+    for line in lines:
+        _center(cv, y, line, wsize)
+        y += int(wsize * 1.55)
     cv.ink("light")
     cv.line(W // 3, y + 8, 2 * W // 3, y + 8)
 
     # --- Gentle suggestions, dotted -------------------------------------
-    y = 700
+    asize = S(24)
+    y = max(700, y + 40)
+    step = asize + 16 if y <= 712 else 48
+    if step == 48:
+        asize = 24                      # crowded screen: keep them small
     for act in activities:
-        tw = cv.text_width(act, 24)
+        tw = cv.text_width(act, asize)
         x0 = (W - (tw + 22)) // 2
         cv.ink("black")
-        cv.fill_circle(x0 + 4, y + 14, 4)
-        cv.text(x0 + 22, y, act, 24)
-        y += 48
+        cv.fill_circle(x0 + 4, y + int(asize * 0.55), 4)
+        cv.text(x0 + 22, y, act, asize)
+        y += step
 
     # --- Sun arc horizon --------------------------------------------------
     _sun_arc(cv, ctx)
@@ -403,11 +423,11 @@ def render_facts(cv, ctx):
     adventure side after a minute."""
 
     cv.ink("gray")
-    _center(cv, 45, "TODAY, IN DETAIL", 18)
+    _center(cv, 45, "TODAY, IN DETAIL", S(18))
     cv.ink("black")
     date_str = "%s, %s %d" % (ctx["weekday_name"], ctx["month_name"],
                               ctx["day"])
-    _center(cv, 90, date_str, 24)
+    _center(cv, 90, date_str, S(24))
     cv.ink("light")
     cv.line(W // 4, 148, 3 * W // 4, 148)
 
@@ -432,6 +452,8 @@ def render_facts(cv, ctx):
         rows.append(("Tomorrow", "%d\xb0/%d\xb0, %d%% rain"
                      % (round(tom["high"]), round(tom["low"]),
                         tom["rain_prob"])))
+    # (rows stay 24pt even in BIG_TEXT — 40pt values collide with
+    # their labels, and this card is meant to be read up close)
     y = 185
     for label, value in rows:
         cv.ink("gray")
@@ -443,9 +465,9 @@ def render_facts(cv, ctx):
 
     doy, total = _day_of_year(ctx)
     cv.ink("gray")
-    _center(cv, y + 24, "Day %d of %d" % (doy, total), 18)
+    _center(cv, y + 20, "Day %d of %d" % (doy, total), 18)
     cv.ink("light")
-    _center(cv, 908, "BACK TO THE ADVENTURE IN A MINUTE", 18)
+    _center(cv, 912, "BACK TO THE ADVENTURE IN A MINUTE", 18)
     _upd_stamp(cv, ctx)
 
     cv.show()
