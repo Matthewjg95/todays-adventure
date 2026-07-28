@@ -339,10 +339,80 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     _sun_arc(cv, ctx)
 
     # --- Prototyping: when this frame was rendered ------------------------
+    _upd_stamp(cv, ctx)
+
+    cv.show()
+
+
+def _upd_stamp(cv, ctx):
     if getattr(config, "SHOW_LAST_UPDATED", False) and "time_str" in ctx:
         cv.ink("light")
         stamp = "upd %s" % ctx["time_str"]
         cv.text(W - 12 - cv.text_width(stamp, 18), 934, stamp, 18)
+
+
+_DAYS_IN_MONTH = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+
+
+def _day_of_year(ctx):
+    leap = ctx["year"] % 4 == 0 and (ctx["year"] % 100 != 0
+                                     or ctx["year"] % 400 == 0)
+    doy = sum(_DAYS_IN_MONTH[:ctx["month"] - 1]) + ctx["day"]
+    if leap and ctx["month"] > 2:
+        doy += 1
+    return doy, 366 if leap else 365
+
+
+def render_facts(cv, ctx):
+    """The flashcard's back side: today, in plain facts. Shown when
+    the side button (not the RTC) woke the device; flips back to the
+    adventure side after a minute."""
+
+    cv.ink("gray")
+    _center(cv, 45, "TODAY, IN DETAIL", 18)
+    cv.ink("black")
+    date_str = "%s, %s %d" % (ctx["weekday_name"], ctx["month_name"],
+                              ctx["day"])
+    _center(cv, 90, date_str, 24)
+    cv.ink("light")
+    cv.line(W // 4, 148, 3 * W // 4, 148)
+
+    daylight = ctx["sunset_minutes"] - ctx["sunrise_minutes"]
+    tom = ctx.get("tomorrow")
+    rows = [
+        ("Temperature", "%d\xb0 (feels %d\xb0)"
+            % (round(ctx["temp"]), round(ctx["feels_like"]))),
+        ("High / Low", "%d\xb0 / %d\xb0"
+            % (round(ctx["high"]), round(ctx["low"]))),
+        ("Sky", ctx["condition"]),
+        ("Cloud cover", "%d%%" % ctx["cloud_cover"]),
+        ("Rain chance", "%d%%" % ctx["rain_prob"]),
+        ("Humidity", "%d%%" % ctx["humidity"]),
+        ("Wind", "%d mph" % round(ctx["wind"])),
+        ("Sunrise", ctx["sunrise"]),
+        ("Sunset", ctx["sunset"]),
+        ("Daylight", "%dh %02dm" % (daylight // 60, daylight % 60)),
+        ("Moon", ctx["moon_name"]),
+    ]
+    if tom:
+        rows.append(("Tomorrow", "%d\xb0/%d\xb0, %d%% rain"
+                     % (round(tom["high"]), round(tom["low"]),
+                        tom["rain_prob"])))
+    y = 185
+    for label, value in rows:
+        cv.ink("gray")
+        cv.text(70, y + 5, label.upper(), 18)
+        cv.ink("black")
+        vw = cv.text_width(value, 24)
+        cv.text(W - 70 - vw, y, value, 24)
+        y += 52
+
+    doy, total = _day_of_year(ctx)
+    cv.ink("gray")
+    _center(cv, y + 24, "Day %d of %d" % (doy, total), 18)
+    cv.ink("light")
+    _center(cv, 908, "BACK TO THE ADVENTURE IN A MINUTE", 18)
+    _upd_stamp(cv, ctx)
 
     cv.show()
 

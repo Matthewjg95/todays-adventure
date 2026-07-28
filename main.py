@@ -133,12 +133,40 @@ def demo_context():
     return ctx
 
 
+FLASHCARD_SECONDS = 60
+
+
+def show_flashcard():
+    """The side button woke us: show the facts card for a minute,
+    then fall through to the normal adventure render."""
+    try:
+        connect_wifi()
+        sync_clock()
+        ctx = weather_service.build_context()
+        ctx["score"] = scoring_engine.score_day(ctx)
+        cv = ui_renderer.make_canvas()
+        ui_renderer.render_facts(cv, ctx)
+        print("flashcard shown")
+        time.sleep(FLASHCARD_SECONDS)
+    except Exception as e:
+        print("flashcard failed:", e)
+    # Make sure the follow-up render isn't skipped as "unchanged".
+    state = weather_service._load_json(config.STATE_FILE) or {}
+    state["last_render"] = None
+    weather_service._save_json(config.STATE_FILE, state)
+
+
 def run_forever():
+    button_wake = MICROPYTHON and not scheduler.woke_by_timer()
+    if button_wake:
+        show_flashcard()
     while True:
         try:
             hour = local_hour()
             if is_quiet_hour(hour):
-                if hour in config.NIGHT_WAKE_HOURS:
+                # button_wake: always flip back off the flashcard,
+                # even mid-night
+                if hour in config.NIGHT_WAKE_HOURS or button_wake:
                     update_display(night_watch=True)
                 else:
                     print("quiet hours: skipping update")
@@ -148,6 +176,7 @@ def run_forever():
             # Never brick the loop: leave the last good image on the
             # e-ink (it persists unpowered) and try again next hour.
             print("update failed:", e)
+        button_wake = False
         scheduler.sleep_until_next_update()
 
 

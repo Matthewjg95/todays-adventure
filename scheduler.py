@@ -16,6 +16,25 @@ import time
 import config
 
 
+def woke_by_timer():
+    """True if this boot was the hourly RTC alarm; False if a human
+    pressed the side button.
+
+    The BM8563 RTC raises its timer flag (TF, bit 2 of Control/Status2)
+    when its alarm powers the board on; a button power-on leaves it
+    clear. We read the flag over I2C and clear it for next time.
+    Fallback heuristic: timer wakes always land at minute :00.
+    """
+    try:
+        from machine import I2C, Pin
+        i2c = I2C(0, scl=Pin(22), sda=Pin(21), freq=100000)
+        val = i2c.readfrom_mem(0x51, 0x01, 1)[0]
+        i2c.writeto_mem(0x51, 0x01, bytes([val & 0x7B]))  # clear TF
+        return bool(val & 0x04)
+    except Exception:
+        return time.localtime()[4] <= 1
+
+
 def seconds_until_next_update():
     """Seconds until the top of the next interval (wakes on the hour)."""
     interval = config.UPDATE_INTERVAL_MINUTES * 60
