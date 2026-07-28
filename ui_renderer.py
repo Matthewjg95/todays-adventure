@@ -12,6 +12,7 @@ E-ink notes:
 """
 
 import artwork
+import config
 
 W, H = 540, 960
 
@@ -336,6 +337,12 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
 
     # --- Sun arc horizon --------------------------------------------------
     _sun_arc(cv, ctx)
+
+    # --- Prototyping: when this frame was rendered ------------------------
+    if getattr(config, "SHOW_LAST_UPDATED", False) and "time_str" in ctx:
+        cv.ink("light")
+        stamp = "upd %s" % ctx["time_str"]
+        cv.text(W - 12 - cv.text_width(stamp, 18), 934, stamp, 18)
 
     cv.show()
 

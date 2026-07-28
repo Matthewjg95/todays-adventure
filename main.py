@@ -119,6 +119,7 @@ def demo_context():
         "rain_prob": 5, "condition": "clear",
         "high": 81.0, "low": 62.0,
         "sunrise": "5:52 AM", "sunset": "8:34 PM",
+        "time_str": "9:00 AM",
         "sunrise_minutes": 5 * 60 + 52,
         "sunset_minutes": 20 * 60 + 34, "now_minutes": 9 * 60,
         "year": 2026, "month": 7, "day": 25, "hour": 9,

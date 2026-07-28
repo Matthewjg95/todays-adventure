@@ -189,6 +189,7 @@ def build_context(now=None, raw=None):
         "sunrise_minutes": sr_h * 60 + sr_m,
         "sunset_minutes": ss_h * 60 + ss_m,
         "now_minutes": hour * 60 + minute,
+        "time_str": _fmt_12h(hour, minute),
         # calendar
         "year": year, "month": month, "day": day, "hour": hour,
         "weekday": weekday,
