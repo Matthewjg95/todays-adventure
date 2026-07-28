@@ -7,6 +7,8 @@ Every function takes (canvas, cx, cy, size) where canvas provides:
 Style: thin outlines, lots of whitespace. Kindle, not dashboard.
 """
 
+import math
+
 
 def _thick_line(cv, x0, y0, x1, y1, w=2):
     for i in range(w):
@@ -33,20 +35,53 @@ def sun(cv, cx, cy, size):
                     cx + dx * dr + off, cy + dy * dr)
 
 
-def _cloud_shape(cv, cx, cy, size):
-    """One clean cloud silhouette: outline circles, then erase the
-    interior arcs with white fills so the lobes merge into one shape
-    (three raw circles read as Mickey Mouse ears on screen)."""
+def _dotted_circle(cv, x, y, r, skip=None):
+    """Circle outline as chained short segments; `skip(px, py)` clips
+    arcs away. Additive black only, so it renders the same in every
+    EPD mode (white-erase tricks fail in the fast modes) — and each
+    segment is one panel write, so fewer segments = faster e-ink."""
+    steps = max(24, int(math.pi * r / 2))   # ~4px per segment
+    prev = None
+    for i in range(steps + 1):
+        a = 2.0 * math.pi * i / steps
+        px = x + r * math.cos(a)
+        py = y + r * math.sin(a)
+        if skip and skip(px, py):
+            prev = None
+            continue
+        if prev:
+            for off in (0, 1):
+                cv.line(int(prev[0]), int(prev[1]) + off,
+                        int(px), int(py) + off)
+        prev = (px, py)
+
+
+def _lobes(cx, cy, size):
     r = size // 4
-    lobes = ((cx - r, cy, r), (cx + r, cy, r),
-             (cx, cy - r // 2, int(r * 1.2)))
-    for x, y, rr in lobes:
-        cv.circle(x, y, rr)
-        cv.circle(x, y, rr - 1)
-    for x, y, rr in lobes:
-        cv.fill_circle_white(x, y, rr - 2)
-    # flat base
-    _thick_line(cv, cx - 2 * r, cy + r - 1, cx + 2 * r, cy + r - 1, 3)
+    return ((cx - r, cy, r), (cx + r, cy, r),
+            (cx, cy - r // 2, int(r * 1.2))), cy + r
+
+
+def _cloud_shape(cv, cx, cy, size):
+    """One cloud silhouette: each lobe's outline, minus any point that
+    falls inside a neighboring lobe or below the flat base."""
+    lobes, base = _lobes(cx, cy, size)
+
+    def clipped(px, py, me):
+        if py > base - 2:
+            return True
+        for lb in lobes:
+            if lb is not me and \
+                    (px - lb[0]) ** 2 + (py - lb[1]) ** 2 \
+                    < (lb[2] - 2) ** 2:
+                return True
+        return False
+
+    for lb in lobes:
+        _dotted_circle(cv, lb[0], lb[1], lb[2],
+                       skip=lambda px, py, lb=lb: clipped(px, py, lb))
+    r = size // 4
+    _thick_line(cv, cx - 2 * r, base - 1, cx + 2 * r, base - 1, 3)
 
 
 def cloud(cv, cx, cy, size):
@@ -54,8 +89,34 @@ def cloud(cv, cx, cy, size):
 
 
 def partly(cv, cx, cy, size):
-    sun(cv, cx - size // 4, cy - size // 4, int(size * 0.6))
-    _cloud_shape(cv, cx + size // 8, cy + size // 6, int(size * 0.8))
+    """Sun peeking from behind the cloud, clipped so nothing crosses
+    the cloud's interior (no white-erase available)."""
+    csize = int(size * 0.8)
+    ccx, ccy = cx + size // 8, cy + size // 6
+    lobes, _ = _lobes(ccx, ccy, csize)
+
+    def in_cloud(px, py):
+        for x0, y0, rr in lobes:
+            if (px - x0) ** 2 + (py - y0) ** 2 < (rr + 3) ** 2:
+                return True
+        return False
+
+    scx, scy = cx - size // 4, cy - size // 4
+    sr = size // 5
+    _dotted_circle(cv, scx, scy, sr, skip=in_cloud)
+    gap = sr + size // 10
+    ray = size // 7
+    for dx, dy in ((0, -1), (-1, 0), (1, 0),
+                   (-0.707, -0.707), (0.707, -0.707), (-0.707, 0.707)):
+        x1 = scx + dx * (gap + ray)
+        y1 = scy + dy * (gap + ray)
+        if in_cloud(x1, y1):
+            continue
+        for off in (0, 1):
+            cv.line(int(scx + dx * gap) + off, int(scy + dy * gap),
+                    int(x1) + off, int(y1))
+
+    _cloud_shape(cv, ccx, ccy, csize)
 
 
 def rain(cv, cx, cy, size):
@@ -104,10 +165,16 @@ def fog(cv, cx, cy, size):
 
 
 def moon(cv, cx, cy, size):
-    """Solid crescent: black disc with a white 'bite' out of it."""
+    """Crescent outline: the moon's edge plus the bite's edge, each
+    clipped to the visible sliver. Additive black only."""
     r = size // 3
-    cv.fill_circle(cx, cy, r)
-    cv.fill_circle_white(cx - r // 2, cy - r // 4, r)
+    bx, by, br = cx - r // 2, cy - r // 4, r
+    _dotted_circle(cv, cx, cy, r,
+                   skip=lambda px, py:
+                   (px - bx) ** 2 + (py - by) ** 2 < (br - 1) ** 2)
+    _dotted_circle(cv, bx, by, br,
+                   skip=lambda px, py:
+                   (px - cx) ** 2 + (py - cy) ** 2 > (r - 1) ** 2)
 
 
 GLYPHS = {

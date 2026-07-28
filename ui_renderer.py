@@ -26,7 +26,7 @@ class UIFlow2Canvas:
 
     BLACK = 0x000000
     WHITE = 0xFFFFFF
-    SHADES = {"black": 0x000000, "gray": 0x555555, "light": 0x999999}
+    SHADES = {"black": 0x000000, "gray": 0x333333, "light": 0x777777}
 
     def __init__(self):
         import M5
@@ -52,14 +52,16 @@ class UIFlow2Canvas:
         # and its default EPD mode (1, "quality") does a full flash per
         # draw call — clouds flashed 4-5 times. Instead: one clean
         # quality-mode wipe to white (also erases ghosting), then
-        # switch to mode 4 ("fastest") so content draws quietly.
+        # mode 3 ("fast") for content: quiet partial updates that keep
+        # grayscale. (Mode 4 is 1-bit — it dithers text and grays into
+        # washed-out speckle.)
         try:
             self.lcd.setEpdMode(1)
         except Exception:
             pass
         self.lcd.fillScreen(self.WHITE)
         try:
-            self.lcd.setEpdMode(4)
+            self.lcd.setEpdMode(3)
         except Exception:
             pass
 
