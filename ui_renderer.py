@@ -286,7 +286,8 @@ def _sun_arc(cv, ctx):
     day. At night the arc rests empty and the moon phase takes over."""
     import math
 
-    cx, cy, r = W // 2, 912, 84
+    big = S(18) != 18
+    cx, cy, r = W // 2, 916 if big else 912, 64 if big else 84
     is_day = ctx["sunrise_minutes"] <= ctx["now_minutes"] \
         <= ctx["sunset_minutes"]
 
@@ -312,11 +313,13 @@ def _sun_arc(cv, ctx):
         cv.ink("gray")
         _center(cv, cy - 52, ctx["moon_name"].upper(), S(18))
 
-    # times anchored to the arc's feet
+    # times anchored to the arc's feet (fixed margins when big)
     cv.ink("gray")
-    cv.text(cx - r - 46, cy + 14, ctx["sunrise"], S(18))
+    lx = 60 if big else cx - r - 46
+    cv.text(lx, cy + 14, ctx["sunrise"], S(18))
     sw = cv.text_width(ctx["sunset"], S(18))
-    cv.text(cx + r + 46 - sw, cy + 14, ctx["sunset"], S(18))
+    rx = (W - 60 - sw) if big else (cx + r + 46 - sw)
+    cv.text(rx, cy + 14, ctx["sunset"], S(18))
 
 
 def render(cv, ctx, score, headline_text, activities, wonder_text):
@@ -336,31 +339,36 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
 
     # --- Medallion: the day's score, or the moon at night watch ----------
     night_watch = ctx.get("is_night_watch")
-    mx, my, mr = W // 2, 190, 100
+    mx, my, mr = W // 2, 180, 80
     cv.ink("light")
     cv.circle(mx, my, mr)
     cv.circle(mx, my, mr - 1)
     cv.ink("black")
     if night_watch:
-        artwork.moon(cv, mx, my, 150)
+        artwork.moon(cv, mx, my, 120)
     else:
         _center3d(cv, my - 55, str(score), 72, depth=4)
         cv.ink("gray")
-        _center(cv, my + 38, "OF 100", S(18))
+        _center(cv, my + 38 - int(S(18) * 1.2), "OF 100", S(18))
 
     # --- Headline ---------------------------------------------------------
     cv.ink("black")
     _headline(cv, headline_text)
 
-    # --- Weather glyph, temp as quiet context ---------------------------
-    if not night_watch:
-        artwork.draw(cv, ctx["condition"], W // 2, 460, 128, is_night)
-    cv.ink("gray")
-    _center(cv, 530, "%d\xb0" % round(ctx["temp"]), 24)
+    # --- Weather glyph with the temp at its side -------------------------
+    temp_str = "%d\xb0" % round(ctx["temp"])
+    if night_watch:
+        cv.ink("gray")
+        _center(cv, 440, temp_str, S(24))
+    else:
+        artwork.draw(cv, ctx["condition"], W // 2 - 55, 450, 120,
+                     is_night)
+        cv.ink("gray")
+        cv.text(W // 2 + 55, 432, temp_str, S(24))
 
     # --- The Wonder: today's one sentence worth reading ------------------
     cv.ink("light")
-    cv.line(W // 3, 580, 2 * W // 3, 580)
+    cv.line(W // 3, 555, 2 * W // 3, 555)
     cv.ink("black")
     wsize = S(24)
     max_chars = int(470 / (wsize * 0.6))
@@ -368,19 +376,19 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     if len(lines) > 2 and wsize > 24:
         wsize = 24                      # long wonder: big doesn't fit
         lines = _wrap(wonder_text, 32)
-    y = 604
+    y = 580
     for line in lines:
         _center(cv, y, line, wsize)
-        y += int(wsize * 1.55)
+        y += wsize + 14
     cv.ink("light")
     cv.line(W // 3, y + 8, 2 * W // 3, y + 8)
 
     # --- Gentle suggestions, dotted -------------------------------------
     asize = S(24)
-    y = max(700, y + 40)
-    step = asize + 16 if y <= 712 else 48
-    if step == 48:
+    y = max(660, y + 36)
+    if y > 740:
         asize = 24                      # crowded screen: keep them small
+    step = asize + (24 if asize == 24 else 10)
     for act in activities:
         tw = cv.text_width(act, asize)
         x0 = (W - (tw + 22)) // 2

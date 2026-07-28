@@ -14,11 +14,12 @@ exercise today."
 
 
 class Wonder:
-    def __init__(self, name, when, messages, priority=0):
+    def __init__(self, name, when, messages, priority=0, night=False):
         self.name = name
         self.when = when
         self.messages = messages    # variants; picked by date
         self.priority = priority
+        self.night = night          # night-watch renders only
 
 
 def _day_seed(ctx):
@@ -62,14 +63,14 @@ WONDERS = [
            messages=["Rain before breakfast. Leave the "
                      "umbrella by the door.",
                      "Tomorrow arrives wet. Plan a slow morning."],
-           priority=78),
+           priority=78, night=True),
     Wonder("frost warning",
            when=lambda c: c.get("is_night_watch")
            and _tomorrow(c).get("low", 99) <= 34,
            messages=["Frost by morning. The plants would "
                      "appreciate a blanket.",
                      "Cold night ahead. Warm socks are advised."],
-           priority=78),
+           priority=78, night=True),
     Wonder("tomorrow snow",
            when=lambda c: c.get("is_night_watch")
            and _tomorrow(c).get("condition") == "snow",
@@ -77,19 +78,19 @@ WONDERS = [
                      "Morning will look different.",
                      "Tonight the sky is wrapping presents. "
                      "Open the curtains first thing."],
-           priority=79),
+           priority=79, night=True),
     Wonder("tomorrow beauty",
            when=lambda c: c.get("is_night_watch")
            and _tomorrow(c).get("rain_prob", 100) < 20
            and 58 <= _tomorrow(c).get("high", 0) <= 86,
            messages=["Tomorrow looks like a beauty. Sleep well.",
                      "Rest up. Tomorrow is worth waking for."],
-           priority=76),
+           priority=76, night=True),
     Wonder("night full moon",
            when=lambda c: c.get("is_night_watch") and _full_moon(c),
            messages=["The moon is out doing its best work "
                      "right now."],
-           priority=74),
+           priority=74, night=True),
     Wonder("night watch",
            when=lambda c: c.get("is_night_watch"),
            messages=["Still awake? So is the moon.",
@@ -97,7 +98,7 @@ WONDERS = [
                      "Even the birds are asleep. "
                      "You made it further than they did.",
                      "Nothing needs you right now. That's rare."],
-           priority=70),
+           priority=70, night=True),
 
     Wonder("first snow",
            when=lambda c: c["is_first_snow"],
@@ -132,7 +133,7 @@ WONDERS = [
     Wonder("rare perfect day",
            when=lambda c: c["score"] >= 96,
            messages=["Only a few days each year are this nice.",
-                     "Whatever you postponed — today is the day for it."],
+                     "Whatever you postponed: today is the day for it."],
            priority=80),
 
     Wonder("perfect summer day",
@@ -225,9 +226,13 @@ WONDERS = [
 
 
 def wonder(ctx):
-    """Return today's one sentence worth reading."""
+    """Return today's one sentence worth reading. Night-watch renders
+    draw only from the night pool, and vice versa."""
+    at_night = bool(ctx.get("is_night_watch"))
     best = None
     for w in WONDERS:
+        if w.night != at_night:
+            continue
         if w.when(ctx) and (best is None or w.priority > best.priority):
             best = w
     if best is None:
