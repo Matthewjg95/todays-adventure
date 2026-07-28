@@ -48,7 +48,20 @@ class UIFlow2Canvas:
         }
         self._ink = self.BLACK
         self.lcd.setTextColor(self.BLACK, self.WHITE)
+        # This binding pushes every primitive straight to the panel,
+        # and its default EPD mode (1, "quality") does a full flash per
+        # draw call — clouds flashed 4-5 times. Instead: one clean
+        # quality-mode wipe to white (also erases ghosting), then
+        # switch to mode 4 ("fastest") so content draws quietly.
+        try:
+            self.lcd.setEpdMode(1)
+        except Exception:
+            pass
         self.lcd.fillScreen(self.WHITE)
+        try:
+            self.lcd.setEpdMode(4)
+        except Exception:
+            pass
 
     def ink(self, shade):
         self._ink = self.SHADES.get(shade, self.BLACK)
@@ -95,15 +108,12 @@ class UIFlow2Canvas:
         self.lcd.fillCircle(x, y, r, self.WHITE)
 
     def show(self):
-        # On e-paper, M5GFX buffers draws until an explicit push.
-        for method in ("display", "update"):
-            fn = getattr(self.lcd, method, None)
-            if fn:
-                try:
-                    fn()
-                except TypeError:
-                    pass
-                return
+        # Draws already reached the panel (no display() in this
+        # binding); just restore quality mode for whoever draws next.
+        try:
+            self.lcd.setEpdMode(1)
+        except Exception:
+            pass
 
 
 class M5PaperCanvas:
@@ -237,6 +247,28 @@ def _wrap(text, max_chars):
     return lines
 
 
+def _headline(cv, text):
+    """Fit the headline: one 40pt line if it fits, else two balanced
+    40pt lines, else (single unbreakable monster) drop to 24pt."""
+    max_w = W - 28
+    if cv.text_width(text, 40) <= max_w:
+        _center3d(cv, 330, text, 40, depth=3)
+        return
+    words = text.split()
+    best = None
+    for i in range(1, len(words)):
+        l1 = " ".join(words[:i])
+        l2 = " ".join(words[i:])
+        wid = max(cv.text_width(l1, 40), cv.text_width(l2, 40))
+        if best is None or wid < best[0]:
+            best = (wid, l1, l2)
+    if best and best[0] <= max_w:
+        _center3d(cv, 294, best[1], 40, depth=3)
+        _center3d(cv, 344, best[2], 40, depth=3)
+    else:
+        _center3d(cv, 338, text, 24, depth=2)
+
+
 def _sun_arc(cv, ctx):
     """Dotted horizon arc with the sun at its real position along the
     day. At night the arc rests empty and the moon phase takes over."""
@@ -306,13 +338,13 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
 
     # --- Headline ---------------------------------------------------------
     cv.ink("black")
-    _center3d(cv, 330, headline_text, 40, depth=3)
+    _headline(cv, headline_text)
 
     # --- Weather glyph, temp as quiet context ---------------------------
     if not night_watch:
-        artwork.draw(cv, ctx["condition"], W // 2, 455, 130, is_night)
+        artwork.draw(cv, ctx["condition"], W // 2, 460, 128, is_night)
     cv.ink("gray")
-    _center(cv, 528, "%d\xb0" % round(ctx["temp"]), 24)
+    _center(cv, 530, "%d\xb0" % round(ctx["temp"]), 24)
 
     # --- The Wonder: today's one sentence worth reading ------------------
     cv.ink("light")

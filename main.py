@@ -138,11 +138,18 @@ FLASHCARD_SECONDS = 60
 
 def show_flashcard():
     """The side button woke us: show the facts card for a minute,
-    then fall through to the normal adventure render."""
+    then fall through to the normal adventure render.
+
+    Uses cached weather when possible so the card appears seconds
+    after the button press — hour-old numbers are fine here, and the
+    flip-back render fetches fresh data anyway."""
     try:
-        connect_wifi()
-        sync_clock()
-        ctx = weather_service.build_context()
+        raw = weather_service._load_json(config.CACHE_FILE)
+        if raw is None or local_hour() is None:
+            connect_wifi()
+            sync_clock()
+            raw = None      # build_context fetches fresh
+        ctx = weather_service.build_context(raw=raw)
         ctx["score"] = scoring_engine.score_day(ctx)
         cv = ui_renderer.make_canvas()
         ui_renderer.render_facts(cv, ctx)
