@@ -184,18 +184,74 @@ RULES = [
 ]
 
 
-def recommend(ctx):
+# Words too generic to count as a repeated concept.
+_STOP = {"a", "an", "and", "the", "for", "of", "to", "in", "on", "is",
+         "it", "its", "at", "day", "days", "today", "tonight", "this",
+         "go", "take", "make", "some", "one", "more", "great",
+         "perfect", "good", "nice", "weather", "time", "now", "later",
+         "arrives", "while", "world", "your", "you", "out", "get"}
+
+
+def _tokens(text):
+    out = []
+    for word in text.lower().replace("'", " ").split():
+        word = "".join(ch for ch in word if ch.isalpha())
+        if len(word) >= 3 and word not in _STOP:
+            out.append(word)
+    return out
+
+
+def _same_concept(a, b):
+    """'walk'/'walking', 'read'/'reading', 'stars'/'stargazing' all
+    match: equal words, or equal 4-letter stems."""
+    for x in a:
+        for y in b:
+            if x == y or (len(x) >= 4 and len(y) >= 4
+                          and x[:4] == y[:4]):
+                return True
+    return False
+
+
+def recommend(ctx, avoid=None):
     """Returns up to MAX_ACTIVITIES gentle suggestions for today.
 
-    ctx must already contain ctx["score"]. (Footer banners moved to
-    wonder_engine in V2 — the display's centerpiece sentence.)
+    ctx must already contain ctx["score"]. `avoid` is text already on
+    screen (headline + wonder): suggestions repeating one of its
+    concepts — "GREAT DAY FOR A WALK" then "Take A Short Walk" — are
+    passed over, as are suggestions repeating each other. If that
+    leaves too few, the repeats fill back in rather than showing a
+    sparse list.
     """
     matched = [r for r in RULES if r.active(ctx)]
     matched.sort(key=lambda r: -r.priority)
 
-    activities = []
+    candidates = []
     for rule in matched:
         for act in rule.gives:
-            if act not in activities:
-                activities.append(act)
-    return activities[:MAX_ACTIVITIES]
+            if act not in candidates:
+                candidates.append(act)
+
+    avoid_tokens = _tokens(avoid) if avoid else []
+    chosen, chosen_tokens = [], []
+
+    def try_add(act, respect_avoid):
+        toks = _tokens(act)
+        if respect_avoid and _same_concept(toks, avoid_tokens):
+            return
+        for prior in chosen_tokens:
+            if _same_concept(toks, prior):
+                return
+        chosen.append(act)
+        chosen_tokens.append(toks)
+
+    for act in candidates:
+        if len(chosen) >= MAX_ACTIVITIES:
+            break
+        try_add(act, respect_avoid=True)
+    for act in candidates:          # refill pass: allow avoid-repeats
+        if len(chosen) >= MAX_ACTIVITIES:
+            break
+        if act not in chosen:
+            try_add(act, respect_avoid=False)
+
+    return chosen[:MAX_ACTIVITIES]

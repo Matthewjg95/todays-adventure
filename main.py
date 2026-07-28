@@ -71,8 +71,9 @@ def update_display(ctx=None, force=False, night_watch=False):
     score = scoring_engine.score_day(ctx)
     ctx["score"] = score
     head = scoring_engine.headline(ctx, score)
-    activities = recommendation_engine.recommend(ctx)
     wonder_text = wonder_engine.wonder(ctx)
+    activities = recommendation_engine.recommend(
+        ctx, avoid=head + " " + wonder_text)
 
     # Only touch the e-ink when something meaningful changed.
     fp = _fingerprint(ctx, score, head, activities, wonder_text)
