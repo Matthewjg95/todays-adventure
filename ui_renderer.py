@@ -368,7 +368,7 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
 
     # --- The Wonder: today's one sentence worth reading ------------------
     cv.ink("light")
-    cv.line(W // 3, 555, 2 * W // 3, 555)
+    cv.line(W // 3, 515, 2 * W // 3, 515)
     cv.ink("black")
     wsize = S(24)
     max_chars = int(470 / (wsize * 0.6))
@@ -376,7 +376,7 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     if len(lines) > 2 and wsize > 24:
         wsize = 24                      # long wonder: big doesn't fit
         lines = _wrap(wonder_text, 32)
-    y = 580
+    y = 540
     for line in lines:
         _center(cv, y, line, wsize)
         y += wsize + 14
@@ -385,10 +385,10 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
 
     # --- Gentle suggestions, dotted -------------------------------------
     asize = S(24)
-    y = max(660, y + 36)
+    y = max(650, y + 36)
     if y > 740:
         asize = 24                      # crowded screen: keep them small
-    step = asize + (24 if asize == 24 else 10)
+    step = asize + (24 if asize == 24 else 8)
     for act in activities:
         tw = cv.text_width(act, asize)
         x0 = (W - (tw + 22)) // 2
