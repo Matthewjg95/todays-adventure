@@ -264,7 +264,7 @@ def _headline(cv, text):
     max_w = W - 28
     for size in (S(40), 40):
         if cv.text_width(text, size) <= max_w:
-            _center3d(cv, 330 - (size - 40) // 2, text, size, depth=3)
+            _center3d(cv, 296 - (size - 40) // 2, text, size, depth=3)
             return
     words = text.split()
     best = None
@@ -275,10 +275,10 @@ def _headline(cv, text):
         if best is None or wid < best[0]:
             best = (wid, l1, l2)
     if best and best[0] <= max_w:
-        _center3d(cv, 294, best[1], 40, depth=3)
-        _center3d(cv, 344, best[2], 40, depth=3)
+        _center3d(cv, 260, best[1], 40, depth=3)
+        _center3d(cv, 310, best[2], 40, depth=3)
     else:
-        _center3d(cv, 338, text, 24, depth=2)
+        _center3d(cv, 304, text, 24, depth=2)
 
 
 def _sun_arc(cv, ctx):
@@ -339,7 +339,7 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
 
     # --- Medallion: the day's score, or the moon at night watch ----------
     night_watch = ctx.get("is_night_watch")
-    mx, my, mr = W // 2, 180, 80
+    mx, my, mr = W // 2, 165, 80
     cv.ink("light")
     cv.circle(mx, my, mr)
     cv.circle(mx, my, mr - 1)
@@ -359,16 +359,16 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     temp_str = "%d\xb0" % round(ctx["temp"])
     if night_watch:
         cv.ink("gray")
-        _center(cv, 440, temp_str, S(24))
+        _center(cv, 406, temp_str, S(24))
     else:
-        artwork.draw(cv, ctx["condition"], W // 2 - 55, 450, 120,
+        artwork.draw(cv, ctx["condition"], W // 2 - 55, 416, 120,
                      is_night)
         cv.ink("gray")
-        cv.text(W // 2 + 55, 432, temp_str, S(24))
+        cv.text(W // 2 + 55, 398, temp_str, S(24))
 
     # --- The Wonder: today's one sentence worth reading ------------------
     cv.ink("light")
-    cv.line(W // 3, 515, 2 * W // 3, 515)
+    cv.line(W // 3, 475, 2 * W // 3, 475)
     cv.ink("black")
     wsize = S(24)
     max_chars = int(470 / (wsize * 0.6))
@@ -376,7 +376,7 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     if len(lines) > 2 and wsize > 24:
         wsize = 24                      # long wonder: big doesn't fit
         lines = _wrap(wonder_text, 32)
-    y = 540
+    y = 500
     for line in lines:
         _center(cv, y, line, wsize)
         y += wsize + 14
@@ -385,7 +385,7 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
 
     # --- Gentle suggestions, dotted -------------------------------------
     asize = S(24)
-    y = max(650, y + 36)
+    y = max(620, y + 18)
     if y > 740:
         asize = 24                      # crowded screen: keep them small
     step = asize + (24 if asize == 24 else 8)
