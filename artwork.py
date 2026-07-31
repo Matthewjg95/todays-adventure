@@ -36,10 +36,36 @@ def sun(cv, cx, cy, size, ray_scale=1.0):
 
 
 def _dotted_circle(cv, x, y, r, skip=None):
-    """Circle outline as chained short segments; `skip(px, py)` clips
-    arcs away. Additive black only, so it renders the same in every
-    EPD mode (white-erase tricks fail in the fast modes) — and each
-    segment is one panel write, so fewer segments = faster e-ink."""
+    """Clipped circle outline. Uses hardware drawArc when the canvas
+    has it (a handful of panel writes instead of hundreds of tiny
+    segments), else falls back to chained segments. Additive black
+    only, so it renders the same in every EPD mode."""
+    if getattr(cv, "arc", None):
+        step = 4
+        n = 360 // step
+        ok = []
+        for i in range(n):
+            a = math.radians(i * step)
+            ok.append(not (skip and skip(x + r * math.cos(a),
+                                         y + r * math.sin(a))))
+        if all(ok):
+            cv.arc(x, y, r, 0, 360)
+            return
+        try:
+            start = ok.index(False)
+        except ValueError:
+            start = 0
+        idx = 0
+        while idx < n:
+            if ok[(start + idx) % n]:
+                a0 = idx
+                while idx < n and ok[(start + idx) % n]:
+                    idx += 1
+                cv.arc(x, y, r, (start + a0) * step,
+                       (start + idx) * step)
+            else:
+                idx += 1
+        return
     steps = max(24, int(math.pi * r / 2))   # ~4px per segment
     prev = None
     for i in range(steps + 1):
@@ -204,7 +230,12 @@ def draw(cv, condition, cx, cy, size, is_night=False):
 def _drop_zone(cx, cy, size):
     r = size // 4
     top = (cy - size // 6) + r + size // 12
-    return (cx - r - 16, top - 2, 2 * r + 32, size // 5 + 22), top
+    return (cx - r - 24, top - 2, 2 * r + 48, size // 5 + 22), top
+
+
+def _drop(cv, x, y, size):
+    for off in (0, 1):  # 2px thick so every drop reads clearly
+        cv.line(x + off, y, x - size // 12 + off, y + size // 8)
 
 
 def _anim_rain(cv, cx, cy, size, t):
@@ -212,9 +243,9 @@ def _anim_rain(cv, cx, cy, size, t):
     cv.rect_white(*box)
     r = size // 4
     span = size // 5 + 8
-    for i, dx in enumerate((-r, 0, r)):
+    for i, dx in enumerate((-r + 6, 0, r - 2)):
         yy = top + int((t * 26 + i * 9) % span)
-        cv.line(cx + dx, yy, cx + dx - size // 12, yy + size // 8)
+        _drop(cv, cx + dx, yy, size)
 
 
 def _anim_storm(cv, cx, cy, size, t):
@@ -222,9 +253,9 @@ def _anim_storm(cv, cx, cy, size, t):
     cv.rect_white(*box)
     r = size // 4
     span = size // 5 + 8
-    for i, dx in enumerate((-r, r)):
+    for i, dx in enumerate((-r + 6, r - 2)):
         yy = top + int((t * 26 + i * 11) % span)
-        cv.line(cx + dx, yy, cx + dx - size // 12, yy + size // 8)
+        _drop(cv, cx + dx, yy, size)
     if int(t * 2) % 4 != 3:          # bolt blinks off now and then
         cv.line(cx + size // 12, top, cx - size // 12, top + size // 6)
         cv.line(cx - size // 12, top + size // 6,

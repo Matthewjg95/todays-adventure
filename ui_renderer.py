@@ -121,6 +121,11 @@ class UIFlow2Canvas:
     def rect_white(self, x, y, w, h):
         self.lcd.fillRect(x, y, w, h, self.WHITE)
 
+    def arc(self, x, y, r, a0, a1):
+        """Arc band ~3px thick. Present only when the binding has
+        drawArc — artwork falls back to segments otherwise."""
+        self.lcd.drawArc(x, y, r + 1, r - 1, a0, a1, self._ink)
+
     def anim_mode(self, on):
         # Fastest (binary) partial updates during motion; the glyphs
         # are pure black line art so nothing is lost.

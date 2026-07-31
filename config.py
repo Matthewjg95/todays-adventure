@@ -26,7 +26,7 @@ QUIET_END = 5                   # ...until this one (saves battery overnight)
 NIGHT_WAKE_HOURS = (23, 1, 3)   # ...except these: night-watch renders
 SHOW_LAST_UPDATED = True        # prototyping: render time, bottom right
 BIG_TEXT = True                # experiment: every font one step bigger
-GLYPH_ANIMATE_SECONDS = 8       # weather glyph movement after each render
+GLYPH_ANIMATE_SECONDS = 30      # weather glyph movement after each render
                                 # (0 disables; lively weather only)
 
 # --- Weather API (Open-Meteo: free, no API key) ---------------------------
