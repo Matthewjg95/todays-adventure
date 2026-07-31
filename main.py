@@ -88,6 +88,15 @@ def update_display(ctx=None, force=False, night_watch=False):
     weather_service._save_json(config.STATE_FILE, state)
     print("rendered: %d/100 | %s | %s | %s"
           % (score, head, ", ".join(activities), wonder_text))
+
+    # A few seconds of glyph motion — rain falls, rays breathe.
+    secs = getattr(config, "GLYPH_ANIMATE_SECONDS", 0)
+    if MICROPYTHON and secs:
+        try:
+            ui_renderer.animate_glyph(cv, ctx, secs)
+        except Exception as e:
+            print("animate failed:", e)
+
     return ctx, score, head, activities, wonder_text
 
 

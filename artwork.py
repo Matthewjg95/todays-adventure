@@ -15,12 +15,12 @@ def _thick_line(cv, x0, y0, x1, y1, w=2):
         cv.line(x0, y0 + i, x1, y1 + i)
 
 
-def sun(cv, cx, cy, size):
+def sun(cv, cx, cy, size, ray_scale=1.0):
     r = size // 3
     for rr in (r, r - 1, r - 2):
         cv.circle(cx, cy, rr)
     gap = r + size // 8
-    ray = size // 6
+    ray = int(size // 6 * ray_scale)
     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         for off in (0, 1):
             cv.line(cx + dx * gap + (off if dy else 0),
@@ -193,3 +193,97 @@ def draw(cv, condition, cx, cy, size, is_night=False):
     if is_night and condition == "clear":
         condition = "moon"
     GLYPHS.get(condition, cloud)(cv, cx, cy, size)
+
+
+# --------------------------------------------------------------------------
+# Animation: only the moving parts redraw each frame (a small white
+# rect-erase plus a handful of primitives), so partial refresh stays
+# cheap and localized. Lively weather moves; calm skies stay still.
+# --------------------------------------------------------------------------
+
+def _drop_zone(cx, cy, size):
+    r = size // 4
+    top = (cy - size // 6) + r + size // 12
+    return (cx - r - 16, top - 2, 2 * r + 32, size // 5 + 22), top
+
+
+def _anim_rain(cv, cx, cy, size, t):
+    box, top = _drop_zone(cx, cy, size)
+    cv.rect_white(*box)
+    r = size // 4
+    span = size // 5 + 8
+    for i, dx in enumerate((-r, 0, r)):
+        yy = top + int((t * 26 + i * 9) % span)
+        cv.line(cx + dx, yy, cx + dx - size // 12, yy + size // 8)
+
+
+def _anim_storm(cv, cx, cy, size, t):
+    box, top = _drop_zone(cx, cy, size)
+    cv.rect_white(*box)
+    r = size // 4
+    span = size // 5 + 8
+    for i, dx in enumerate((-r, r)):
+        yy = top + int((t * 26 + i * 11) % span)
+        cv.line(cx + dx, yy, cx + dx - size // 12, yy + size // 8)
+    if int(t * 2) % 4 != 3:          # bolt blinks off now and then
+        cv.line(cx + size // 12, top, cx - size // 12, top + size // 6)
+        cv.line(cx - size // 12, top + size // 6,
+                cx + size // 12, top + size // 6)
+        cv.line(cx + size // 12, top + size // 6,
+                cx - size // 12, top + size // 3)
+
+
+def _anim_snow(cv, cx, cy, size, t):
+    box, top = _drop_zone(cx, cy, size)
+    cv.rect_white(*box)
+    r = size // 4
+    span = size // 5 + 12
+    for i, dx in enumerate((-r, 0, r)):
+        yy = top + int((t * 12 + i * 13) % span)
+        sway = int(6 * math.sin(t * 2.0 + i))
+        _flake(cv, cx + dx + sway, yy + 4, size // 10)
+
+
+def _anim_clear(cv, cx, cy, size, t):
+    pad = size * 2 // 3
+    cv.rect_white(cx - pad, cy - pad, 2 * pad, 2 * pad)
+    sun(cv, cx, cy, size, 1.0 + 0.25 * math.sin(t * 2.2))
+
+
+def _anim_fog(cv, cx, cy, size, t):
+    w = size // 2
+    cv.rect_white(cx - w - 14, cy - size // 4 - 6,
+                  2 * w + 28, size // 2 + 12)
+    for i, dy in enumerate((-size // 5, 0, size // 5)):
+        shrink = abs(i - 1) * size // 10
+        drift = int(8 * math.sin(t * 1.6 + i * 2.1))
+        _thick_line(cv, cx - w + shrink + drift, cy + dy,
+                    cx + w - shrink + drift, cy + dy, 2)
+
+
+_ANIMATORS = {
+    "rain": _anim_rain,
+    "storm": _anim_storm,
+    "snow": _anim_snow,
+    "clear": _anim_clear,
+    "fog": _anim_fog,
+    # partly / cloudy / moon: calm skies hold still
+}
+
+
+def animate(cv, condition, cx, cy, size, is_night, seconds):
+    """Run the glyph's motion for `seconds`, then settle at rest.
+    Returns False when this weather has no motion."""
+    import time
+    if is_night and condition == "clear":
+        condition = "moon"
+    anim = _ANIMATORS.get(condition)
+    if anim is None:
+        return False
+    t, dt = 0.0, 0.30
+    while t < seconds:
+        anim(cv, cx, cy, size, t)
+        time.sleep(0.10)
+        t += dt
+    anim(cv, cx, cy, size, 0.0)      # rest pose
+    return True

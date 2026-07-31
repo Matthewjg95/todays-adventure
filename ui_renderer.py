@@ -118,6 +118,17 @@ class UIFlow2Canvas:
     def fill_circle_white(self, x, y, r):
         self.lcd.fillCircle(x, y, r, self.WHITE)
 
+    def rect_white(self, x, y, w, h):
+        self.lcd.fillRect(x, y, w, h, self.WHITE)
+
+    def anim_mode(self, on):
+        # Fastest (binary) partial updates during motion; the glyphs
+        # are pure black line art so nothing is lost.
+        try:
+            self.lcd.setEpdMode(4 if on else 1)
+        except Exception:
+            pass
+
     def show(self):
         # Draws already reached the panel (no display() in this
         # binding); just restore quality mode for whoever draws next.
@@ -140,6 +151,12 @@ class M5PaperCanvas:
 
     def text3d(self, x, y, s, size, depth=3):
         self.text(x, y, s, size)
+
+    def rect_white(self, x, y, w, h):
+        pass
+
+    def anim_mode(self, on):
+        pass
 
     def text(self, x, y, s, size):
         # UIFlow bundles DejaVu fonts at fixed sizes; pick nearest.
@@ -188,6 +205,12 @@ class TextCanvas:
 
     def text3d(self, x, y, s, size, depth=3):
         self.text(x, y, s, size)
+
+    def rect_white(self, *a):
+        pass
+
+    def anim_mode(self, on):
+        pass
 
     def text_width(self, s, size):
         return int(len(s) * size * 0.6)
@@ -256,6 +279,27 @@ def _wrap(text, max_chars):
     if cur:
         lines.append(cur)
     return lines
+
+
+GLYPH = (W // 2 - 55, 416, 120)     # cx, cy, size — shared with animation
+
+
+def _is_night(ctx):
+    return (ctx["now_minutes"] > ctx["sunset_minutes"]
+            or ctx["now_minutes"] < 5 * 60)
+
+
+def animate_glyph(cv, ctx, seconds):
+    """Post-render glyph motion (device only). Safe no-op for calm
+    conditions and for canvases without animation support."""
+    if ctx.get("is_night_watch"):
+        return
+    try:
+        cv.anim_mode(True)
+        artwork.animate(cv, ctx["condition"], GLYPH[0], GLYPH[1],
+                        GLYPH[2], _is_night(ctx), seconds)
+    finally:
+        cv.anim_mode(False)
 
 
 def _headline(cv, text):
@@ -328,8 +372,7 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     Grayscale hierarchy: black for what matters (score, headline,
     wonder, suggestions), soft gray for context (date, temp, times).
     """
-    is_night = (ctx["now_minutes"] > ctx["sunset_minutes"]
-                or ctx["now_minutes"] < 5 * 60)
+    is_night = _is_night(ctx)
 
     # --- Date ---------------------------------------------------------
     date_str = "%s, %s %d" % (ctx["weekday_name"], ctx["month_name"],
@@ -361,7 +404,7 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
         cv.ink("gray")
         _center(cv, 406, temp_str, S(24))
     else:
-        artwork.draw(cv, ctx["condition"], W // 2 - 55, 416, 120,
+        artwork.draw(cv, ctx["condition"], GLYPH[0], GLYPH[1], GLYPH[2],
                      is_night)
         cv.ink("gray")
         cv.text(W // 2 + 55, 398, temp_str, S(24))
