@@ -362,7 +362,9 @@ def _sun_arc(cv, ctx):
     lx = 60 if big else cx - r - 46
     cv.text(lx, cy + 14, ctx["sunrise"], S(18))
     sw = cv.text_width(ctx["sunset"], S(18))
-    rx = (W - 60 - sw) if big else (cx + r + 46 - sw)
+    # keep clear of the "upd" stamp in the bottom-right corner
+    rmargin = 150 if getattr(config, "SHOW_LAST_UPDATED", False) else 60
+    rx = (W - rmargin - sw) if big else (cx + r + 46 - sw)
     cv.text(rx, cy + 14, ctx["sunset"], S(18))
 
 
