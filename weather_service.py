@@ -52,6 +52,26 @@ def _fmt_12h(h, m):
     return "%d:%02d %s" % (h12, m, suffix)
 
 
+_MDAYS = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+
+
+def _to_ordinal(datestr):
+    """'2026-07-30' -> a day number, good enough for adjacency."""
+    y, m, d = (int(p) for p in datestr.split("-"))
+    days = y * 365 + (y // 4) - (y // 100) + (y // 400)
+    days += sum(_MDAYS[:m - 1]) + d
+    if m > 2 and (y % 4 == 0 and (y % 100 != 0 or y % 400 == 0)):
+        days += 1
+    return days
+
+
+def _days_between(a, b):
+    try:
+        return _to_ordinal(b) - _to_ordinal(a)
+    except (ValueError, IndexError):
+        return -1
+
+
 def _season(month):
     if config.NORTHERN_HEMISPHERE:
         table = {12: "winter", 1: "winter", 2: "winter",
@@ -222,6 +242,25 @@ def _apply_memory(ctx):
     """Stateful "first time this year" facts, remembered across wakes."""
     state = _load_json(config.STATE_FILE) or {}
     dirty = False
+
+    # --- Yesterday: how does today compare? ---------------------------
+    today_key = "%d-%02d-%02d" % (ctx["year"], ctx["month"], ctx["day"])
+    prev = state.get("yesterday") or {}
+    ctx["yesterday"] = None
+    if prev.get("date") and prev["date"] != today_key:
+        # only compare against the immediately preceding day
+        if _days_between(prev["date"], today_key) == 1:
+            ctx["yesterday"] = prev
+            ctx["temp_delta"] = ctx["high"] - prev["high"]
+    if prev.get("date") != today_key or \
+            abs(prev.get("high", -999) - ctx["high"]) > 0.5:
+        state["yesterday"] = {
+            "date": today_key,
+            "high": ctx["high"],
+            "low": ctx["low"],
+            "condition": ctx["condition"],
+        }
+        dirty = True
 
     # Snow seasons span new year; key them by the year they start in.
     season_year = ctx["year"] if ctx["month"] >= 7 else ctx["year"] - 1

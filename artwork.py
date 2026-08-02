@@ -302,9 +302,11 @@ _ANIMATORS = {
 }
 
 
-def animate(cv, condition, cx, cy, size, is_night, seconds):
+def animate(cv, condition, cx, cy, size, is_night, seconds,
+            after_frame=None):
     """Run the glyph's motion for `seconds`, then settle at rest.
-    Returns False when this weather has no motion."""
+    `after_frame(cv)` repaints anything the erase zone may clip (the
+    medallion ring). Returns False when this weather has no motion."""
     import time
     if is_night and condition == "clear":
         condition = "moon"
@@ -314,7 +316,11 @@ def animate(cv, condition, cx, cy, size, is_night, seconds):
     t, dt = 0.0, 0.30
     while t < seconds:
         anim(cv, cx, cy, size, t)
+        if after_frame:
+            after_frame(cv)
         time.sleep(0.10)
         t += dt
     anim(cv, cx, cy, size, 0.0)      # rest pose
+    if after_frame:
+        after_frame(cv)
     return True

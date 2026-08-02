@@ -1,8 +1,10 @@
-"""Turn the day context into a 1-100 score and a celebratory headline.
+"""Headlines, and the internal "ease" number that helps pick them.
 
-Philosophy: every day scores at least decently, because every day is
-good for *something*. The score reflects "how easy is it to enjoy being
-outside", not "how good is the day" — the headline does the celebrating.
+Philosophy: the score is NOT shown — every day has a reason to be
+beautiful, and ranking days 1-100 quietly contradicts that. The number
+survives only as an internal signal for how easy it is to be outside,
+which helps route between headlines and rules. Nothing user-facing
+should ever print it.
 """
 
 
@@ -95,6 +97,8 @@ def _headline_rules():
          "PERFECT READING WEATHER"),
         (lambda c, s: s >= 48,
          "SLOW DOWN AND ENJOY IT"),
+        (lambda c, s: c["feels_like"] < 25,
+         "BUNDLE UP, IT'S BEAUTIFUL"),
         (lambda c, s: True,
          "STAY COZY TODAY"),
     )

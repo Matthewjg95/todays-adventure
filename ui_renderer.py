@@ -286,12 +286,22 @@ def _wrap(text, max_chars):
     return lines
 
 
-GLYPH = (W // 2 - 55, 416, 120)     # cx, cy, size — shared with animation
+GLYPH = (W // 2, 165, 120)      # medallion center — shared with animation
 
 
 def _is_night(ctx):
     return (ctx["now_minutes"] > ctx["sunset_minutes"]
             or ctx["now_minutes"] < 5 * 60)
+
+
+MEDALLION_R = 80
+
+
+def _ring(cv):
+    cv.ink("light")
+    cv.circle(GLYPH[0], GLYPH[1], MEDALLION_R)
+    cv.circle(GLYPH[0], GLYPH[1], MEDALLION_R - 1)
+    cv.ink("black")
 
 
 def animate_glyph(cv, ctx, seconds):
@@ -302,7 +312,8 @@ def animate_glyph(cv, ctx, seconds):
     try:
         cv.anim_mode(True)
         artwork.animate(cv, ctx["condition"], GLYPH[0], GLYPH[1],
-                        GLYPH[2], _is_night(ctx), seconds)
+                        GLYPH[2], _is_night(ctx), seconds,
+                        after_frame=_ring)
     finally:
         cv.anim_mode(False)
 
@@ -373,11 +384,12 @@ def _sun_arc(cv, ctx):
     cv.text(rx, cy + 14, ctx["sunset"], S(18))
 
 
-def render(cv, ctx, score, headline_text, activities, wonder_text):
+def render(cv, ctx, headline_text, activities, wonder_text):
     """V2 layout: facts first, wonder second, lots of air.
 
-    Grayscale hierarchy: black for what matters (score, headline,
-    wonder, suggestions), soft gray for context (date, temp, times).
+    Grayscale hierarchy: black for what matters (headline, wonder,
+    suggestions), soft gray for context (date, temp, times). No score
+    — every day has a reason to be beautiful.
     """
     is_night = _is_night(ctx)
 
@@ -387,7 +399,8 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     cv.ink("gray")
     _center(cv, 40, date_str.upper(), S(18))
 
-    # --- Medallion: the day's score, or the moon at night watch ----------
+    # --- Medallion: the moon at night, the weather by day ----------------
+    # (No score: every day has a reason to be beautiful.)
     night_watch = ctx.get("is_night_watch")
     mx, my, mr = W // 2, 165, 80
     cv.ink("light")
@@ -397,24 +410,23 @@ def render(cv, ctx, score, headline_text, activities, wonder_text):
     if night_watch:
         artwork.moon(cv, mx, my, 120)
     else:
-        _center3d(cv, my - 55, str(score), 72, depth=4)
-        cv.ink("gray")
-        _center(cv, my + 38 - int(S(18) * 1.2), "OF 100", S(18))
+        artwork.draw(cv, ctx["condition"], GLYPH[0], GLYPH[1], GLYPH[2],
+                     is_night)
 
     # --- Headline ---------------------------------------------------------
     cv.ink("black")
     _headline(cv, headline_text)
 
-    # --- Weather glyph with the temp at its side -------------------------
-    temp_str = "%d\xb0" % round(ctx["temp"])
-    if night_watch:
-        cv.ink("gray")
-        _center(cv, 406, temp_str, S(24))
-    else:
-        artwork.draw(cv, ctx["condition"], GLYPH[0], GLYPH[1], GLYPH[2],
-                     is_night)
-        cv.ink("gray")
-        cv.text(W // 2 + 55, 398, temp_str, S(24))
+    # --- Temperature, and how today compares to yesterday ----------------
+    cv.ink("gray")
+    _center(cv, 396, "%d\xb0" % round(ctx["temp"]), S(24))
+    delta = ctx.get("temp_delta")
+    if delta is not None and abs(delta) >= 4:
+        note = "%d\xb0 %s than yesterday" % (
+            abs(int(round(delta))),
+            "warmer" if delta > 0 else "cooler")
+        cv.ink("light")
+        _center(cv, 396 + S(24) + 10, note, 18)
 
     # --- The Wonder: today's one sentence worth reading ------------------
     cv.ink("light")

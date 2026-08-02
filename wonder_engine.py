@@ -55,6 +55,37 @@ def _solstice_equinox(c):
     return dates.get((c["month"], c["day"]))
 
 
+# Annual meteor showers: (month, day) of peak -> name. Peaks drift a
+# day either way year to year; we celebrate a two-night window.
+_METEORS = {
+    (1, 3): "Quadrantid", (1, 4): "Quadrantid",
+    (4, 22): "Lyrid", (4, 23): "Lyrid",
+    (5, 5): "Eta Aquariid", (5, 6): "Eta Aquariid",
+    (8, 11): "Perseid", (8, 12): "Perseid", (8, 13): "Perseid",
+    (10, 21): "Orionid", (10, 22): "Orionid",
+    (11, 17): "Leonid", (11, 18): "Leonid",
+    (12, 13): "Geminid", (12, 14): "Geminid",
+}
+
+
+def _meteor_shower(c):
+    return _METEORS.get((c["month"], c["day"]))
+
+
+def _daylight_minutes(c):
+    return c.get("sunset_minutes", 0) - c.get("sunrise_minutes", 0)
+
+
+def _warmer_than_yesterday(c, degrees):
+    d = c.get("temp_delta")
+    return d is not None and d >= degrees
+
+
+def _cooler_than_yesterday(c, degrees):
+    d = c.get("temp_delta")
+    return d is not None and d <= -degrees
+
+
 WONDERS = [
     # ---- Night watch (only during the 3 scheduled night wakes) --------
     Wonder("umbrella warning",
@@ -99,6 +130,22 @@ WONDERS = [
                      "You made it further than they did.",
                      "Nothing needs you right now. That's rare."],
            priority=70, night=True),
+
+    # ---- Meteor showers (night wake, or the evening before) ----------
+    Wonder("meteor shower night",
+           when=lambda c: c.get("is_night_watch")
+           and _meteor_shower(c) and c["cloud_cover"] < 50,
+           messages=["Meteors are falling right now. Go outside.",
+                     "Look up, be patient, and you'll see one."],
+           priority=88, night=True),
+    Wonder("meteor shower evening",
+           when=lambda c: _meteor_shower(c) and c["cloud_cover"] < 50
+           and c["hour"] >= 16,
+           messages=["Meteor shower tonight. Set an alarm for "
+                     "after midnight.",
+                     "Tonight the sky puts on a show. "
+                     "Meteors after dark."],
+           priority=88),
 
     Wonder("first snow",
            when=lambda c: c["is_first_snow"],
@@ -161,6 +208,59 @@ WONDERS = [
                      "A dark sky, no clouds. Look up tonight."],
            priority=55),
 
+    # ---- Yesterday's memory -------------------------------------------
+    Wonder("heat broke",
+           when=lambda c: _cooler_than_yesterday(c, 12)
+           and c["high"] < 85,
+           messages=["The heat finally broke.",
+                     "Cooler than yesterday. You'll feel it "
+                     "the moment you step out."],
+           priority=63),
+    Wonder("big warm up",
+           when=lambda c: _warmer_than_yesterday(c, 12),
+           messages=["Much warmer than yesterday. "
+                     "The day opened up.",
+                     "Yesterday's coat can stay inside."],
+           priority=63),
+    Wonder("cold snap",
+           when=lambda c: _cooler_than_yesterday(c, 15),
+           messages=["A proper cold snap. Yesterday feels "
+                     "far away.",
+                     "The cold arrived overnight. Dress like "
+                     "you mean it."],
+           priority=64),
+    Wonder("sun returns",
+           when=lambda c: c["condition"] in ("clear", "partly")
+           and (c.get("yesterday") or {}).get("condition")
+           in ("rain", "storm", "snow", "fog"),
+           messages=["The sun came back.",
+                     "After yesterday, this light feels earned."],
+           priority=62),
+
+    # ---- Daylight milestones -------------------------------------------
+    Wonder("long evenings",
+           when=lambda c: _daylight_minutes(c) >= 14 * 60
+           and c["month"] in (5, 6, 7),
+           messages=["Fourteen hours of daylight today. "
+                     "Use the long end of it.",
+                     "The evening goes on and on right now."],
+           priority=30),
+    Wonder("short days",
+           when=lambda c: _daylight_minutes(c) <= 9 * 60 + 30
+           and c["month"] in (11, 12, 1),
+           messages=["Barely nine hours of daylight. "
+                     "Catch what there is.",
+                     "The light is scarce today. That makes it "
+                     "worth more."],
+           priority=30),
+    Wonder("sunset past eight",
+           when=lambda c: c.get("sunset_minutes", 0) >= 20 * 60
+           and c.get("sunset_minutes", 0) < 20 * 60 + 10
+           and c["month"] in (4, 5),
+           messages=["The sun sets after eight now. "
+                     "Summer is close."],
+           priority=68),
+
     Wonder("window weather",
            when=lambda c: 62 <= c["temp"] <= 78 and c["humidity"] < 65
            and c["rain_prob"] < 25,
@@ -201,26 +301,57 @@ WONDERS = [
            messages=["The fog makes everything look like a memory."],
            priority=35),
 
+    # ---- Seasonal texture ----------------------------------------------
+    Wonder("deep summer",
+           when=lambda c: c["month"] in (7, 8) and c["high"] >= 85,
+           messages=["Deep summer. The kind of heat you'll "
+                     "describe fondly in February.",
+                     "Find some shade and stay a while."],
+           priority=25),
+    Wonder("early spring thaw",
+           when=lambda c: c["month"] in (3, 4) and c["high"] >= 55
+           and c["season"] == "spring",
+           messages=["The ground is waking up.",
+                     "Mud season. It means everything is thawing."],
+           priority=25),
+    Wonder("bare november",
+           when=lambda c: c["month"] == 11,
+           messages=["The trees are showing their bones.",
+                     "November light is low and gold and brief."],
+           priority=20),
+
     # ---- Seasonal defaults (always something worth noticing) ----------
     Wonder("summer default",
            when=lambda c: c["season"] == "summer",
            messages=["Take the long way home today.",
-                     "The evenings are long right now. Use one."],
+                     "The evenings are long right now. Use one.",
+                     "Somewhere nearby, the water is warm.",
+                     "Eat something outside today.",
+                     "Summer is short. This is the middle of it."],
            priority=0),
     Wonder("autumn default",
            when=lambda c: c["season"] == "autumn",
            messages=["Autumn only does this once a year.",
-                     "A good day to notice the trees."],
+                     "A good day to notice the trees.",
+                     "The air smells different this month.",
+                     "Sweater weather has its own quiet luxury.",
+                     "Everything is turning. Watch it happen."],
            priority=0),
     Wonder("winter default",
            when=lambda c: c["season"] == "winter",
            messages=["Winter light is the softest light.",
-                     "Warm drinks taste better on days like this."],
+                     "Warm drinks taste better on days like this.",
+                     "The world is resting. You're allowed to, too.",
+                     "Long nights make small lights matter more.",
+                     "Cold air is good for the head."],
            priority=0),
     Wonder("spring default",
            when=lambda c: c["season"] == "spring",
            messages=["Something new bloomed today. Find it.",
-                     "Everything outside is busy growing."],
+                     "Everything outside is busy growing.",
+                     "The birds started early this morning.",
+                     "Green is coming back, a little each day.",
+                     "Open a window for ten minutes."],
            priority=0),
 ]
 

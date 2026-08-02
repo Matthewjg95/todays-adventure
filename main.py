@@ -47,12 +47,12 @@ def sync_clock():
         pass  # RTC keeps time between wakes; a failed sync is fine
 
 
-def _fingerprint(ctx, score, head, activities, wonder_text):
+def _fingerprint(ctx, head, activities, wonder_text):
     """What the screen would show, minus noise. Temp is bucketed to
     3 degrees so a slow drift doesn't trigger e-ink refreshes."""
     return "|".join((
         "%d-%d" % (ctx["month"], ctx["day"]),
-        str(score), head, ",".join(activities), wonder_text,
+        head, ",".join(activities), wonder_text,
         ctx["condition"],
         str(int(round(ctx["temp"] / 3.0))),
         "day" if ctx["now_minutes"] < ctx["sunset_minutes"] else "night",
@@ -76,7 +76,7 @@ def update_display(ctx=None, force=False, night_watch=False):
         ctx, avoid=head + " " + wonder_text)
 
     # Only touch the e-ink when something meaningful changed.
-    fp = _fingerprint(ctx, score, head, activities, wonder_text)
+    fp = _fingerprint(ctx, head, activities, wonder_text)
     state = weather_service._load_json(config.STATE_FILE) or {}
     if not force and state.get("last_render") == fp:
         print("unchanged: skipping refresh")
@@ -84,10 +84,10 @@ def update_display(ctx=None, force=False, night_watch=False):
     state["last_render"] = fp
 
     cv = ui_renderer.make_canvas()
-    ui_renderer.render(cv, ctx, score, head, activities, wonder_text)
+    ui_renderer.render(cv, ctx, head, activities, wonder_text)
     weather_service._save_json(config.STATE_FILE, state)
-    print("rendered: %d/100 | %s | %s | %s"
-          % (score, head, ", ".join(activities), wonder_text))
+    print("rendered: %s | %s | %s"
+          % (head, ", ".join(activities), wonder_text))
 
     # A few seconds of glyph motion — rain falls, rays breathe.
     secs = getattr(config, "GLYPH_ANIMATE_SECONDS", 0)
