@@ -30,6 +30,51 @@ def S(size):
 # Canvas backends
 # --------------------------------------------------------------------------
 
+class Sprite:
+    """Offscreen buffer for one screen region. Takes absolute screen
+    coordinates and translates them, so the artwork code is identical
+    whether it draws to the panel or into RAM."""
+
+    BLACK = 0x000000
+    WHITE = 0xFFFFFF
+    SHADES = {"black": 0x000000, "gray": 0x333333, "light": 0x777777}
+
+    def __init__(self, lcd, x, y, w, h):
+        self.lcd = lcd
+        self.x, self.y, self.w, self.h = x, y, w, h
+        self.buf = lcd.newCanvas(w, h, 8, True)
+        self._ink = self.BLACK
+
+    def ink(self, shade):
+        self._ink = self.SHADES.get(shade, self.BLACK)
+
+    def clear(self):
+        self.buf.fillScreen(self.WHITE)
+
+    def push(self):
+        self.buf.push(self.x, self.y)
+
+    def line(self, x0, y0, x1, y1):
+        self.buf.drawLine(x0 - self.x, y0 - self.y,
+                          x1 - self.x, y1 - self.y, self._ink)
+
+    def circle(self, x, y, r):
+        self.buf.drawCircle(x - self.x, y - self.y, r, self._ink)
+
+    def fill_circle(self, x, y, r):
+        self.buf.fillCircle(x - self.x, y - self.y, r, self._ink)
+
+    def fill_circle_white(self, x, y, r):
+        self.buf.fillCircle(x - self.x, y - self.y, r, self.WHITE)
+
+    def rect_white(self, x, y, w, h):
+        self.buf.fillRect(x - self.x, y - self.y, w, h, self.WHITE)
+
+    def arc(self, x, y, r, a0, a1):
+        self.buf.drawArc(x - self.x, y - self.y, r + 1, r - 1,
+                         a0, a1, self._ink)
+
+
 class UIFlow2Canvas:
     """UIFlow2.0 (MicroPython, M5GFX) backend for M5Paper v1.1."""
 
@@ -125,6 +170,13 @@ class UIFlow2Canvas:
         """Arc band ~3px thick. Present only when the binding has
         drawArc — artwork falls back to segments otherwise."""
         self.lcd.drawArc(x, y, r + 1, r - 1, a0, a1, self._ink)
+
+    def sprite(self, x, y, w, h):
+        """Offscreen buffer for a region, or None if unsupported."""
+        try:
+            return Sprite(self.lcd, x, y, w, h)
+        except Exception:
+            return None
 
     def anim_mode(self, on):
         # Fastest (binary) partial updates during motion; the glyphs
@@ -305,15 +357,27 @@ def _ring(cv):
 
 
 def animate_glyph(cv, ctx, seconds):
-    """Post-render glyph motion (device only). Safe no-op for calm
-    conditions and for canvases without animation support."""
+    """Post-render glyph motion (device only). Composes frames in an
+    offscreen buffer when the binding supports it (~12fps), else falls
+    back to drawing straight to the panel (~3fps). No-op for calm
+    conditions and at night."""
     if ctx.get("is_night_watch"):
         return
+    cx, cy, size = GLYPH
     try:
         cv.anim_mode(True)
-        artwork.animate(cv, ctx["condition"], GLYPH[0], GLYPH[1],
-                        GLYPH[2], _is_night(ctx), seconds,
-                        after_frame=_ring)
+        sprite = None
+        maker = getattr(cv, "sprite", None)
+        if maker:
+            pad = MEDALLION_R + 4
+            sprite = maker(cx - pad, cy - pad, 2 * pad, 2 * pad)
+        if sprite:
+            artwork.animate_buffered(
+                sprite, ctx["condition"], cx, cy, size,
+                _is_night(ctx), seconds, decorate=_ring)
+        else:
+            artwork.animate(cv, ctx["condition"], cx, cy, size,
+                            _is_night(ctx), seconds, after_frame=_ring)
     finally:
         cv.anim_mode(False)
 

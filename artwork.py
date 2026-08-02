@@ -35,36 +35,55 @@ def sun(cv, cx, cy, size, ray_scale=1.0):
                     cx + dx * dr + off, cy + dy * dr)
 
 
-def _dotted_circle(cv, x, y, r, skip=None):
-    """Clipped circle outline. Uses hardware drawArc when the canvas
-    has it (a handful of panel writes instead of hundreds of tiny
-    segments), else falls back to chained segments. Additive black
-    only, so it renders the same in every EPD mode."""
-    if getattr(cv, "arc", None):
-        step = 4
-        n = 360 // step
-        ok = []
-        for i in range(n):
-            a = math.radians(i * step)
-            ok.append(not (skip and skip(x + r * math.cos(a),
-                                         y + r * math.sin(a))))
-        if all(ok):
-            cv.arc(x, y, r, 0, 360)
-            return
+# Clipped-arc geometry never changes for a given glyph, but recomputing
+# it per animation frame cost ~126ms. Cache the spans instead.
+_ARC_CACHE = {}
+
+
+def _arc_spans(x, y, r, skip, key):
+    spans = _ARC_CACHE.get(key)
+    if spans is not None:
+        return spans
+    step = 4
+    n = 360 // step
+    ok = []
+    for i in range(n):
+        a = math.radians(i * step)
+        ok.append(not (skip and skip(x + r * math.cos(a),
+                                     y + r * math.sin(a))))
+    if all(ok):
+        spans = [(0, 360)]
+    else:
         try:
             start = ok.index(False)
         except ValueError:
             start = 0
+        spans = []
         idx = 0
         while idx < n:
             if ok[(start + idx) % n]:
                 a0 = idx
                 while idx < n and ok[(start + idx) % n]:
                     idx += 1
-                cv.arc(x, y, r, (start + a0) * step,
-                       (start + idx) * step)
+                spans.append(((start + a0) * step, (start + idx) * step))
             else:
                 idx += 1
+    if len(_ARC_CACHE) > 24:
+        _ARC_CACHE.clear()
+    _ARC_CACHE[key] = spans
+    return spans
+
+
+def _dotted_circle(cv, x, y, r, skip=None, key=None):
+    """Clipped circle outline. Uses hardware drawArc when the canvas
+    has it (a handful of panel writes instead of hundreds of tiny
+    segments), else falls back to chained segments. Additive black
+    only, so it renders the same in every EPD mode."""
+    if getattr(cv, "arc", None):
+        if key is None:
+            key = (x, y, r, id(skip))
+        for a0, a1 in _arc_spans(x, y, r, skip, key):
+            cv.arc(x, y, r, a0, a1)
         return
     steps = max(24, int(math.pi * r / 2))   # ~4px per segment
     prev = None
@@ -103,9 +122,10 @@ def _cloud_shape(cv, cx, cy, size):
                 return True
         return False
 
-    for lb in lobes:
+    for n, lb in enumerate(lobes):
         _dotted_circle(cv, lb[0], lb[1], lb[2],
-                       skip=lambda px, py, lb=lb: clipped(px, py, lb))
+                       skip=lambda px, py, lb=lb: clipped(px, py, lb),
+                       key=("cloud", cx, cy, size, n))
     r = size // 4
     _thick_line(cv, cx - 2 * r, base - 1, cx + 2 * r, base - 1, 3)
 
@@ -300,6 +320,70 @@ _ANIMATORS = {
     "fog": _anim_fog,
     # partly / cloudy / moon: calm skies hold still
 }
+
+
+# --- Offscreen (sprite) animation --------------------------------------
+# Conway-style: the static art (ring, cloud, sun disc) is drawn into
+# the buffer ONCE; each frame only erases and redraws its moving zone
+# inside RAM, then pushes the region to the panel. The per-frame cost
+# is a handful of ops + one push.
+
+_STATIC = {
+    "rain": lambda cv, cx, cy, size:
+        _cloud_shape(cv, cx, cy - size // 6, size),
+    "storm": lambda cv, cx, cy, size:
+        _cloud_shape(cv, cx, cy - size // 6, size),
+    "snow": lambda cv, cx, cy, size:
+        _cloud_shape(cv, cx, cy - size // 6, size),
+    "clear": None,      # _anim_clear repaints the whole sun each frame
+    "fog": None,        # _anim_fog repaints its lines each frame
+}
+
+
+def animate_buffered(sprite, condition, cx, cy, size, is_night,
+                     seconds, decorate=None):
+    """Compose frames in the offscreen buffer, push one region each.
+    Wall-clock paced via ms ticks (time.time() is whole seconds on
+    this port)."""
+    import time
+    if is_night and condition == "clear":
+        condition = "moon"
+    anim = _ANIMATORS.get(condition)
+    if anim is None:
+        return False
+
+    sprite.clear()
+    if decorate:
+        decorate(sprite)
+    static = _STATIC.get(condition)
+    if static:
+        static(sprite, cx, cy, size)
+
+    ticks = getattr(time, "ticks_ms", None)
+    if ticks:
+        start = ticks()
+
+        def elapsed():
+            return time.ticks_diff(ticks(), start) / 1000.0
+    else:
+        start = time.time()
+
+        def elapsed():
+            return time.time() - start
+
+    while True:
+        t = elapsed()
+        if t >= seconds:
+            break
+        anim(sprite, cx, cy, size, t)
+        if decorate:
+            decorate(sprite)     # cheap in RAM; heals erase overlap
+        sprite.push()
+    anim(sprite, cx, cy, size, 0.0)    # rest pose
+    if decorate:
+        decorate(sprite)
+    sprite.push()
+    return True
 
 
 def animate(cv, condition, cx, cy, size, is_night, seconds,
