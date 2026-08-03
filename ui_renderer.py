@@ -346,14 +346,7 @@ def _is_night(ctx):
             or ctx["now_minutes"] < 5 * 60)
 
 
-MEDALLION_R = 80
-
-
-def _ring(cv):
-    cv.ink("light")
-    cv.circle(GLYPH[0], GLYPH[1], MEDALLION_R)
-    cv.circle(GLYPH[0], GLYPH[1], MEDALLION_R - 1)
-    cv.ink("black")
+GLYPH_PAD = 84          # half-size of the animation's offscreen buffer
 
 
 def animate_glyph(cv, ctx, seconds):
@@ -369,15 +362,15 @@ def animate_glyph(cv, ctx, seconds):
         sprite = None
         maker = getattr(cv, "sprite", None)
         if maker:
-            pad = MEDALLION_R + 4
-            sprite = maker(cx - pad, cy - pad, 2 * pad, 2 * pad)
+            sprite = maker(cx - GLYPH_PAD, cy - GLYPH_PAD,
+                           2 * GLYPH_PAD, 2 * GLYPH_PAD)
         if sprite:
             artwork.animate_buffered(
                 sprite, ctx["condition"], cx, cy, size,
-                _is_night(ctx), seconds, decorate=_ring)
+                _is_night(ctx), seconds)
         else:
             artwork.animate(cv, ctx["condition"], cx, cy, size,
-                            _is_night(ctx), seconds, after_frame=_ring)
+                            _is_night(ctx), seconds)
     finally:
         cv.anim_mode(False)
 
@@ -463,13 +456,10 @@ def render(cv, ctx, headline_text, activities, wonder_text):
     cv.ink("gray")
     _center(cv, 40, date_str.upper(), S(18))
 
-    # --- Medallion: the moon at night, the weather by day ----------------
+    # --- The weather itself, or the moon at night watch ------------------
     # (No score: every day has a reason to be beautiful.)
     night_watch = ctx.get("is_night_watch")
-    mx, my, mr = W // 2, 165, 80
-    cv.ink("light")
-    cv.circle(mx, my, mr)
-    cv.circle(mx, my, mr - 1)
+    mx, my = W // 2, 165
     cv.ink("black")
     if night_watch:
         artwork.moon(cv, mx, my, 120)
