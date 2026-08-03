@@ -38,13 +38,78 @@ def connect_wifi():
 
 
 def sync_clock():
+    """NTP-set the system clock, then mirror it into the BM8563 so the
+    next cold boot has the time before WiFi is even up."""
     if not MICROPYTHON:
-        return
+        return False
     try:
         import ntptime
         ntptime.settime()
     except Exception:
-        pass  # RTC keeps time between wakes; a failed sync is fine
+        return False           # external RTC may still carry us
+    scheduler.rtc_set(time.gmtime())
+    return True
+
+
+def establish_time():
+    """Make the system clock trustworthy BEFORE any decision depends
+    on it. Returns the source used.
+
+    Critical for overnight: timerSleep cuts main power, so every RTC
+    wake is a cold boot with the ESP32 clock at zero. Deciding quiet
+    hours or night watch from that clock silently disables both.
+    """
+    if not MICROPYTHON:
+        return "desktop"
+    if time.localtime()[0] >= 2024:
+        return "system"
+    stamp = scheduler.rtc_get()          # survives power-off
+    if stamp:
+        try:
+            import machine
+            machine.RTC().datetime((stamp[0], stamp[1], stamp[2], 0,
+                                    stamp[3], stamp[4], stamp[5], 0))
+            if time.localtime()[0] >= 2024:
+                return "rtc"
+        except Exception:
+            pass
+    try:                                  # last resort: network time
+        connect_wifi()
+    except Exception:
+        return "none"
+    return "ntp" if sync_clock() else "none"
+
+
+WAKE_LOG = "wake_log.txt"
+WAKE_LOG_MAX = 5000       # bytes; trimmed to the recent tail
+
+
+def log_wake(msg):
+    """Append one line to a flash log. On battery there is no serial,
+    so this is the only record of what happened overnight."""
+    if not MICROPYTHON:
+        return
+    try:
+        t = time.localtime()
+        line = "%04d-%02d-%02d %02d:%02d %s\n" % (
+            t[0], t[1], t[2], t[3], t[4], msg)
+        try:
+            if os_size(WAKE_LOG) > WAKE_LOG_MAX:
+                with open(WAKE_LOG) as f:
+                    tail = f.read()[-WAKE_LOG_MAX // 2:]
+                with open(WAKE_LOG, "w") as f:
+                    f.write(tail)
+        except OSError:
+            pass
+        with open(WAKE_LOG, "a") as f:
+            f.write(line)
+    except Exception:
+        pass
+
+
+def os_size(path):
+    import os
+    return os.stat(path)[6]
 
 
 def _fingerprint(ctx, head, activities, wonder_text):
@@ -55,7 +120,9 @@ def _fingerprint(ctx, head, activities, wonder_text):
         head, ",".join(activities), wonder_text,
         ctx["condition"],
         str(int(round(ctx["temp"] / 3.0))),
-        "day" if ctx["now_minutes"] < ctx["sunset_minutes"] else "night",
+        # after midnight counts as night too, not just after sunset
+        "day" if ctx["sunrise_minutes"] <= ctx["now_minutes"]
+        <= ctx["sunset_minutes"] else "night",
         "nw%d" % ctx["hour"] if ctx.get("is_night_watch") else "",
     ))
 
@@ -80,6 +147,7 @@ def update_display(ctx=None, force=False, night_watch=False):
     state = weather_service._load_json(config.STATE_FILE) or {}
     if not force and state.get("last_render") == fp:
         print("unchanged: skipping refresh")
+        log_wake("  unchanged, no refresh")
         return ctx, score, head, activities, wonder_text
     state["last_render"] = fp
 
@@ -175,25 +243,40 @@ def show_flashcard():
 
 def run_forever():
     button_wake = MICROPYTHON and not scheduler.woke_by_timer()
+    log_wake("boot (%s)" % ("button" if button_wake else "timer"))
     if button_wake:
         show_flashcard()
     while True:
         try:
+            # Time first: every battery wake is a cold boot, and both
+            # quiet hours and night watch are decided from the clock.
+            source = establish_time()
             hour = local_hour()
-            if is_quiet_hour(hour):
+            if hour is None:
+                # Clock unknowable (no RTC, no WiFi). Render anyway
+                # rather than sit dark all night.
+                log_wake("clock unknown (%s): rendering daytime" % source)
+                update_display()
+            elif is_quiet_hour(hour):
                 # button_wake: always flip back off the flashcard,
                 # even mid-night
                 if hour in config.NIGHT_WAKE_HOURS or button_wake:
+                    log_wake("night watch %02d:00 (%s)" % (hour, source))
                     update_display(night_watch=True)
                 else:
+                    log_wake("quiet skip %02d:00 (%s)" % (hour, source))
                     print("quiet hours: skipping update")
             else:
+                log_wake("update %02d:00 (%s)" % (hour, source))
                 update_display()
         except Exception as e:
             # Never brick the loop: leave the last good image on the
             # e-ink (it persists unpowered) and try again next hour.
             print("update failed:", e)
+            log_wake("FAILED: %r" % (e,))
         button_wake = False
+        secs = scheduler.seconds_until_next_update()
+        log_wake("sleeping %ds" % secs)
         scheduler.sleep_until_next_update()
 
 
