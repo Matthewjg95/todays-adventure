@@ -242,14 +242,19 @@ def show_flashcard():
 
 
 def run_forever():
+    # Clock first: every battery wake is a cold boot, and the wake
+    # cause, quiet hours and night watch are all decided from it.
+    boot_source = establish_time()
     button_wake = MICROPYTHON and not scheduler.woke_by_timer()
-    log_wake("boot (%s)" % ("button" if button_wake else "timer"))
+    log_wake("boot (%s) [%s, clock=%s]"
+             % ("button" if button_wake else "timer",
+                scheduler.WAKE_DETAIL, boot_source))
+    print("wake:", "button" if button_wake else "timer",
+          scheduler.WAKE_DETAIL)
     if button_wake:
         show_flashcard()
     while True:
         try:
-            # Time first: every battery wake is a cold boot, and both
-            # quiet hours and night watch are decided from the clock.
             source = establish_time()
             hour = local_hour()
             if hour is None:
@@ -277,6 +282,7 @@ def run_forever():
         button_wake = False
         secs = scheduler.seconds_until_next_update()
         log_wake("sleeping %ds" % secs)
+        scheduler.note_expected_wake(secs)
         scheduler.sleep_until_next_update()
 
 

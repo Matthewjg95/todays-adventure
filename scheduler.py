@@ -19,9 +19,35 @@ import config
 BM8563_ADDR = 0x51
 
 
+_BUS = None
+
+
 def _i2c():
+    """I2C handle for the RTC, retried because the bus is not ready
+    in the first moments of boot — exactly when we need to ask why we
+    woke. Without the retry every RTC wake looked like a button press.
+    """
+    global _BUS
+    if _BUS is not None:
+        return _BUS
     from machine import I2C, Pin
-    return I2C(0, scl=Pin(22), sda=Pin(21), freq=100000)
+    last = None
+    for attempt in range(4):
+        try:
+            bus = I2C(0, scl=Pin(22), sda=Pin(21), freq=100000)
+            bus.readfrom_mem(BM8563_ADDR, 0x02, 1)   # prove it answers
+            _BUS = bus
+            return bus
+        except Exception as e:
+            last = e
+            if attempt == 0:
+                try:            # bring the board's hardware up, then retry
+                    import M5
+                    M5.begin()
+                except Exception:
+                    pass
+            time.sleep(0.2)
+    raise last
 
 
 def _bcd2int(v):
@@ -77,26 +103,48 @@ def rtc_set(t):
         return False
 
 
-def woke_by_timer():
-    """True if this boot was the hourly RTC alarm; False if a human
-    pressed the side button.
+WAKE_DETAIL = "?"       # why woke_by_timer decided what it did
+INTENT_FILE = "wake_intent.txt"
+WAKE_SLACK = 300        # seconds of tolerance around the expected wake
 
-    The BM8563 RTC raises its timer flag (TF, bit 2 of Control/Status2)
-    when its alarm powers the board on; a button power-on leaves it
-    clear. We read the flag over I2C and clear it for next time.
-    """
+
+def note_expected_wake(secs):
+    """Record when the RTC alarm should bring us back, so the next
+    boot can tell an alarm from a human."""
     try:
-        i2c = _i2c()
-        val = i2c.readfrom_mem(BM8563_ADDR, 0x01, 1)[0]
-        i2c.writeto_mem(BM8563_ADDR, 0x01, bytes([val & 0x7B]))
-        return bool(val & 0x04)
+        with open(INTENT_FILE, "w") as f:
+            f.write("%d" % (int(time.time()) + int(secs)))
     except Exception:
-        # Fallback: timer wakes land on the hour. Only trust this if
-        # the clock is actually set — an unsynced clock reads 2000.
-        t = time.localtime()
-        if t[0] < 2024:
-            return True         # assume timer; never strand a battery wake
-        return t[4] <= 1
+        pass
+
+
+def woke_by_timer():
+    """True if the RTC alarm woke us, False if a human pressed the
+    side button.
+
+    The obvious approach — the BM8563's timer flag — does not work
+    here: the UIFlow2 firmware initialises the RTC during boot and
+    clears its interrupt flags before any Python runs, so the flag
+    always reads zero. Instead we compare the clock against the wake
+    time we recorded before sleeping. Requires the clock to be
+    established first.
+    """
+    global WAKE_DETAIL
+    now = time.time()
+    if time.localtime()[0] < 2024:
+        WAKE_DETAIL = "clock unset; assuming timer"
+        return True
+    try:
+        with open(INTENT_FILE) as f:
+            expected = int(f.read().strip())
+    except Exception:
+        WAKE_DETAIL = "no intent file; assuming timer"
+        return True
+    drift = now - expected
+    on_time = -WAKE_SLACK <= drift <= WAKE_SLACK
+    WAKE_DETAIL = "drift=%ds -> %s" % (drift,
+                                       "timer" if on_time else "button")
+    return on_time
 
 
 def seconds_until_next_update():
