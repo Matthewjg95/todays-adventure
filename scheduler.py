@@ -154,30 +154,67 @@ def seconds_until_next_update():
     return int(interval - (now % interval)) or interval
 
 
+MAIN_PWR_PIN = 2        # M5Paper power latch (M5EPD_MAIN_PWR_PIN)
+
+
+def _shutdown_with_rtc_wake(secs):
+    """M5EPD-style shutdown, done directly over I2C.
+
+    UIFlow2's M5.Power.timerSleep powers the board off but its wake
+    never fires — the device froze at its first battery sleep. What
+    Arduino's proven M5.shutdown() actually does: arm the BM8563
+    countdown timer, enable its interrupt output (wired to the power
+    latch), then release main power on GPIO2. The RTC's INT line
+    re-latches power when the timer fires.
+
+    On battery this function does not return. On USB the board stays
+    powered; the caller waits out the interval instead.
+    """
+    from machine import Pin
+    i2c = _i2c()
+    if secs >= 60:
+        src = 0x83                              # 1/60 Hz clock: minutes
+        count = min(255, max(1, (secs + 30) // 60))
+    else:
+        src = 0x82                              # 1 Hz clock: seconds
+        count = min(255, max(1, secs))
+    i2c.writeto_mem(BM8563_ADDR, 0x01, bytes([0x01]))  # TIE on, flags clear
+    i2c.writeto_mem(BM8563_ADDR, 0x0E, bytes([0x00]))  # stop timer
+    i2c.writeto_mem(BM8563_ADDR, 0x0F, bytes([count]))
+    i2c.writeto_mem(BM8563_ADDR, 0x0E, bytes([src]))   # start countdown
+    Pin(MAIN_PWR_PIN, Pin.OUT).value(0)         # release the power latch
+
+
+def _restore_power_latch():
+    """After a USB-powered sleep, re-assert the latch so a later USB
+    unplug doesn't kill the board mid-cycle, and quiet the timer."""
+    try:
+        from machine import Pin
+        Pin(MAIN_PWR_PIN, Pin.OUT).value(1)
+        i2c = _i2c()
+        i2c.writeto_mem(BM8563_ADDR, 0x0E, bytes([0x00]))
+        i2c.writeto_mem(BM8563_ADDR, 0x01, bytes([0x00]))
+    except Exception:
+        pass
+
+
 def sleep_until_next_update():
     secs = seconds_until_next_update()
     # keep a sane range: at least 1 min, at most the full interval
     secs = max(60, min(secs, config.UPDATE_INTERVAL_MINUTES * 60))
 
-    # 1a. Full power-off with RTC wake (UIFlow2 / M5Unified)
+    # 1. Full power-off, RTC countdown re-latches power (M5EPD-style)
     try:
-        import M5
-        M5.Power.timerSleep(secs)  # does not return on battery power
-        time.sleep(secs)           # on USB it may fall through; wait it out
-        return
-    except (ImportError, AttributeError):
-        pass
-
-    # 1b. Full power-off with RTC wake (legacy UIFlow 1.x)
-    try:
-        from m5stack import M5 as m5
-        m5.shutdown(secs)
+        _shutdown_with_rtc_wake(secs)
+        # Still running -> USB is keeping us alive. Wait out the
+        # interval, then restore the latch and continue the loop.
         time.sleep(secs)
+        _restore_power_latch()
         return
-    except ImportError:
+    except Exception:
         pass
 
-    # 2. ESP32 deep sleep
+    # 2. ESP32 deep sleep (reliable wake, costs more battery)
     try:
         import machine
         machine.deepsleep(secs * 1000)  # does not return; resets on wake
