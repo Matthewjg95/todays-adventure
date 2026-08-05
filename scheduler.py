@@ -198,29 +198,46 @@ def _restore_power_latch():
         pass
 
 
+EPD_PWR_EN_PIN = 23     # e-ink panel power (image persists unpowered)
+EXT_PWR_EN_PIN = 5      # external port power
+
+
+def _peripherals_off():
+    """Cut the rails deep sleep doesn't need, trimming idle draw."""
+    try:
+        from machine import Pin
+        Pin(EPD_PWR_EN_PIN, Pin.OUT).value(0)
+        Pin(EXT_PWR_EN_PIN, Pin.OUT).value(0)
+    except Exception:
+        pass
+
+
 def sleep_until_next_update():
     secs = seconds_until_next_update()
     # keep a sane range: at least 1 min, at most the full interval
     secs = max(60, min(secs, config.UPDATE_INTERVAL_MINUTES * 60))
 
-    # 1. Full power-off, RTC countdown re-latches power (M5EPD-style)
-    try:
-        _shutdown_with_rtc_wake(secs)
-        # Still running -> USB is keeping us alive. Wait out the
-        # interval, then restore the latch and continue the loop.
-        time.sleep(secs)
-        _restore_power_latch()
-        return
-    except Exception:
-        pass
-
-    # 2. ESP32 deep sleep (reliable wake, costs more battery)
+    # ESP32 deep sleep: the wake timer is inside the chip, so it fires
+    # regardless of firmware or the RTC-to-power-latch circuit — which
+    # never restored power on this board (tested twice: UIFlow2's
+    # timerSleep AND the Arduino-style BM8563 sequence in
+    # _shutdown_with_rtc_wake, kept below for a future revisit).
+    # Wake = reset -> boot.py -> main.py, same as a cold boot.
     try:
         import machine
-        machine.deepsleep(secs * 1000)  # does not return; resets on wake
+        # Keep the main power latch asserted THROUGH deep sleep: pads
+        # float during sleep, and a floating latch = battery power dies.
+        machine.Pin(MAIN_PWR_PIN, machine.Pin.OUT, value=1, hold=True)
+        try:
+            import esp32
+            esp32.gpio_deep_sleep_hold(True)
+        except (ImportError, AttributeError):
+            pass
+        _peripherals_off()
+        machine.deepsleep(secs * 1000)  # does not return
         return
     except ImportError:
         pass
 
-    # 3. Desktop simulation / fallback
+    # Desktop simulation / fallback
     time.sleep(secs)
