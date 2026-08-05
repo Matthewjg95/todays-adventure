@@ -242,6 +242,17 @@ def show_flashcard():
 
 
 def run_forever():
+    # Hardware watchdog: if ANYTHING hangs (a dead socket, a wedged
+    # panel), the chip resets and the next boot recovers. Deep sleep
+    # resets the chip anyway, so the WDT only has to cover awake time.
+    wdt = None
+    if MICROPYTHON:
+        try:
+            from machine import WDT
+            wdt = WDT(timeout=240000)      # 4 min >> longest good cycle
+        except Exception:
+            pass
+
     # Clock first: every battery wake is a cold boot, and the wake
     # cause, quiet hours and night watch are all decided from it.
     boot_source = establish_time()
@@ -254,6 +265,8 @@ def run_forever():
     if button_wake:
         show_flashcard()
     while True:
+        if wdt:
+            wdt.feed()
         try:
             source = establish_time()
             hour = local_hour()

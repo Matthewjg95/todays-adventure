@@ -128,9 +128,15 @@ _MONTHS = ("January", "February", "March", "April", "May", "June", "July",
 
 
 def fetch_raw():
+    """Fetch with a hard timeout. Without one, a socket that opens but
+    never delivers blocks forever — the device froze from 5 AM to
+    evening waiting on exactly that."""
     url = config.WEATHER_URL.format(
         lat=config.LATITUDE, lon=config.LONGITUDE, tz=config.TIMEZONE)
-    resp = requests.get(url)
+    try:
+        resp = requests.get(url, timeout=30)
+    except TypeError:            # requests build without timeout kwarg
+        resp = requests.get(url)
     try:
         return resp.json()
     finally:

@@ -130,6 +130,18 @@ def woke_by_timer():
     established first.
     """
     global WAKE_DETAIL
+    # Strongest signal first: a deep-sleep reset can only be the timer.
+    try:
+        import machine
+        cause = machine.reset_cause()
+        if cause == machine.DEEPSLEEP_RESET:
+            WAKE_DETAIL = "deepsleep reset"
+            return True
+        if cause == machine.WDT_RESET:
+            WAKE_DETAIL = "WATCHDOG reset (hang recovered)"
+            return True      # not a human; skip the flashcard
+    except Exception:
+        pass
     now = time.time()
     if time.localtime()[0] < 2024:
         WAKE_DETAIL = "clock unset; assuming timer"
