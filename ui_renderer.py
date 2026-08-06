@@ -75,6 +75,112 @@ class Sprite:
                          a0, a1, self._ink)
 
 
+class FullFrameCanvas:
+    """Compose the WHOLE screen in an offscreen buffer, then push it
+    once as an absolute quality-mode (GC16) frame.
+
+    This is the only render that is correct after a deep-sleep wake:
+    the reboot desyncs the IT8951's internal buffer from the panel,
+    and differential draws against a desynced buffer develop nothing
+    (the recurring blank screen). An absolute full frame needs no
+    sync. See docs/POWER.md.
+    """
+
+    BLACK = 0x000000
+    WHITE = 0xFFFFFF
+    SHADES = {"black": 0x000000, "gray": 0x333333, "light": 0x777777}
+
+    def __init__(self):
+        import M5
+        from M5 import Widgets
+        M5.begin()
+        self.lcd = M5.Lcd
+        for rot in range(4):
+            self.lcd.setRotation(rot)
+            if self.lcd.width() == W and self.lcd.height() == H:
+                break
+        self.buf = self.lcd.newCanvas(W, H, 8, True)
+        self._fonts = {
+            72: Widgets.FONTS.DejaVu72,
+            56: Widgets.FONTS.DejaVu56,
+            40: Widgets.FONTS.DejaVu40,
+            24: Widgets.FONTS.DejaVu24,
+            18: Widgets.FONTS.DejaVu18,
+        }
+        self._ink = self.BLACK
+        self.buf.fillScreen(self.WHITE)
+        self.buf.setTextColor(self.BLACK, self.WHITE)
+
+    def ink(self, shade):
+        self._ink = self.SHADES.get(shade, self.BLACK)
+        self.buf.setTextColor(self._ink, self.WHITE)
+
+    def _set_font(self, size):
+        for pt in (72, 56, 40, 24, 18):
+            if size >= pt or pt == 18:
+                self.buf.setFont(self._fonts[pt])
+                return
+
+    def text(self, x, y, s, size):
+        self._set_font(size)
+        self.buf.drawString(s, x, y)
+
+    def text3d(self, x, y, s, size, depth=3):
+        self._set_font(size)
+        keep = self._ink
+        self.buf.setTextColor(self.SHADES["light"], self.WHITE)
+        for d in range(depth, 0, -1):
+            self.buf.drawString(s, x + d, y + d)
+        self.buf.setTextColor(self.BLACK, self.WHITE)
+        self.buf.drawString(s, x, y)
+        self.buf.setTextColor(keep, self.WHITE)
+
+    def text_width(self, s, size):
+        self._set_font(size)
+        try:
+            return self.buf.textWidth(s)
+        except AttributeError:
+            return int(len(s) * size * 0.6)
+
+    def line(self, x0, y0, x1, y1):
+        self.buf.drawLine(x0, y0, x1, y1, self._ink)
+
+    def circle(self, x, y, r):
+        self.buf.drawCircle(x, y, r, self._ink)
+
+    def fill_circle(self, x, y, r):
+        self.buf.fillCircle(x, y, r, self._ink)
+
+    def fill_circle_white(self, x, y, r):
+        self.buf.fillCircle(x, y, r, self.WHITE)
+
+    def rect_white(self, x, y, w, h):
+        self.buf.fillRect(x, y, w, h, self.WHITE)
+
+    def arc(self, x, y, r, a0, a1):
+        self.buf.drawArc(x, y, r + 1, r - 1, a0, a1, self._ink)
+
+    def anim_mode(self, on):
+        try:
+            self.lcd.setEpdMode(4 if on else 1)
+        except Exception:
+            pass
+
+    def sprite(self, x, y, w, h):
+        try:
+            return Sprite(self.lcd, x, y, w, h)
+        except Exception:
+            return None
+
+    def show(self):
+        # One absolute full frame: correct from any prior state.
+        try:
+            self.lcd.setEpdMode(1)
+        except Exception:
+            pass
+        self.buf.push(0, 0)
+
+
 class UIFlow2Canvas:
     """UIFlow2.0 (MicroPython, M5GFX) backend for M5Paper v1.1."""
 
@@ -300,6 +406,12 @@ class TextCanvas:
 
 
 def make_canvas(clear=True):
+    if clear:
+        # Full renders MUST be absolute full frames (see docs/POWER.md)
+        try:
+            return FullFrameCanvas()
+        except Exception:
+            pass
     try:
         return UIFlow2Canvas(clear=clear)
     except ImportError:

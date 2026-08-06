@@ -257,6 +257,13 @@ def run_forever():
             wdt = WDT(timeout=240000)      # 4 min >> longest good cycle
         except Exception:
             pass
+        try:
+            # Release global pad holds a previous sleep may have left;
+            # held pads would silently break the display SPI bus.
+            import esp32
+            esp32.gpio_deep_sleep_hold(False)
+        except Exception:
+            pass
 
     # Clock first: every battery wake is a cold boot, and the wake
     # cause, quiet hours and night watch are all decided from it.

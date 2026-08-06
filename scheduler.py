@@ -215,10 +215,23 @@ EXT_PWR_EN_PIN = 5      # external port power
 
 
 def _peripherals_off():
-    """Cut the rails deep sleep doesn't need, trimming idle draw."""
+    """Quiesce for sleep. Cut only the external-port rail; never the
+    EPD rail (pin 23) — see docs/POWER.md. Let the display finish and
+    rest so the panel keeps its image cleanly through the night."""
+    try:
+        import M5
+        for name in ("waitDisplay", "waitDisplayed"):
+            fn = getattr(M5.Lcd, name, None)
+            if fn:
+                fn()
+                break
+        fn = getattr(M5.Lcd, "sleep", None)
+        if fn:
+            fn()
+    except Exception:
+        pass
     try:
         from machine import Pin
-        Pin(EPD_PWR_EN_PIN, Pin.OUT).value(0)
         Pin(EXT_PWR_EN_PIN, Pin.OUT).value(0)
     except Exception:
         pass
@@ -237,14 +250,10 @@ def sleep_until_next_update():
     # Wake = reset -> boot.py -> main.py, same as a cold boot.
     try:
         import machine
-        # Keep the main power latch asserted THROUGH deep sleep: pads
-        # float during sleep, and a floating latch = battery power dies.
+        # Keep the main power latch asserted THROUGH deep sleep. GPIO2
+        # is RTC-capable, so its individual hold survives deep sleep —
+        # no global pad hold (which leaves pads wedged after wake).
         machine.Pin(MAIN_PWR_PIN, machine.Pin.OUT, value=1, hold=True)
-        try:
-            import esp32
-            esp32.gpio_deep_sleep_hold(True)
-        except (ImportError, AttributeError):
-            pass
         _peripherals_off()
         machine.deepsleep(secs * 1000)  # does not return
         return
