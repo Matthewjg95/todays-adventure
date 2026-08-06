@@ -148,6 +148,11 @@ def update_display(ctx=None, force=False, night_watch=False):
     if not force and state.get("last_render") == fp:
         print("unchanged: skipping refresh")
         log_wake("  unchanged, no refresh")
+        if MICROPYTHON:
+            try:      # keep the corner stamp current: proof of life
+                ui_renderer.refresh_stamp(ctx)
+            except Exception:
+                pass
         return ctx, score, head, activities, wonder_text
     state["last_render"] = fp
 

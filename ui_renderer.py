@@ -82,11 +82,12 @@ class UIFlow2Canvas:
     WHITE = 0xFFFFFF
     SHADES = {"black": 0x000000, "gray": 0x333333, "light": 0x777777}
 
-    def __init__(self):
+    def __init__(self, clear=True):
         import M5
         from M5 import Widgets
         M5.begin()
         self.lcd = M5.Lcd
+        self._clear = clear
         # Force portrait 540x960 regardless of the panel's native
         # rotation.
         for rot in range(4):
@@ -109,11 +110,12 @@ class UIFlow2Canvas:
         # mode 3 ("fast") for content: quiet partial updates that keep
         # grayscale. (Mode 4 is 1-bit — it dithers text and grays into
         # washed-out speckle.)
-        try:
-            self.lcd.setEpdMode(1)
-        except Exception:
-            pass
-        self.lcd.fillScreen(self.WHITE)
+        if clear:
+            try:
+                self.lcd.setEpdMode(1)
+            except Exception:
+                pass
+            self.lcd.fillScreen(self.WHITE)
         try:
             self.lcd.setEpdMode(3)
         except Exception:
@@ -297,9 +299,9 @@ class TextCanvas:
         print("+" + "-" * cols + "+")
 
 
-def make_canvas():
+def make_canvas(clear=True):
     try:
-        return UIFlow2Canvas()
+        return UIFlow2Canvas(clear=clear)
     except ImportError:
         pass
     try:
@@ -527,6 +529,16 @@ def _upd_stamp(cv, ctx):
         cv.ink("light")
         stamp = "upd %s" % ctx["time_str"]
         cv.text(W - 12 - cv.text_width(stamp, 18), 934, stamp, 18)
+
+
+def refresh_stamp(ctx):
+    """Repaint just the stamp corner (device only): called on
+    unchanged wakes so a working skip doesn't read as a freeze."""
+    cv = make_canvas(clear=False)
+    cv.ink("light")
+    cv.rect_white(W - 190, 928, 190, 30)
+    _upd_stamp(cv, ctx)
+    cv.show()
 
 
 _DAYS_IN_MONTH = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
