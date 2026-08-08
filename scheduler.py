@@ -250,10 +250,19 @@ def sleep_until_next_update():
     # Wake = reset -> boot.py -> main.py, same as a cold boot.
     try:
         import machine
-        # Keep the main power latch asserted THROUGH deep sleep. GPIO2
-        # is RTC-capable, so its individual hold survives deep sleep —
-        # no global pad hold (which leaves pads wedged after wake).
+        # Hold the main power latch AND the EPD power rail high through
+        # deep sleep. Without the EPD hold, pin 23 floats, the rail
+        # sags, and the panel discharges — the image visibly fades
+        # during the sleeping hour (observed live). Pin 23 is not an
+        # RTC pad, so the global deep-sleep hold is required for it;
+        # main.py releases the holds again at boot.
         machine.Pin(MAIN_PWR_PIN, machine.Pin.OUT, value=1, hold=True)
+        machine.Pin(EPD_PWR_EN_PIN, machine.Pin.OUT, value=1, hold=True)
+        try:
+            import esp32
+            esp32.gpio_deep_sleep_hold(True)
+        except (ImportError, AttributeError):
+            pass
         _peripherals_off()
         machine.deepsleep(secs * 1000)  # does not return
         return

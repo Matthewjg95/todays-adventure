@@ -145,7 +145,10 @@ def update_display(ctx=None, force=False, night_watch=False):
     # Only touch the e-ink when something meaningful changed.
     fp = _fingerprint(ctx, head, activities, wonder_text)
     state = weather_service._load_json(config.STATE_FILE) or {}
-    if not force and state.get("last_render") == fp:
+    if not force and state.get("last_render") == fp \
+            and not getattr(config, "ALWAYS_RENDER", True):
+        # Skipping is only safe if the panel provably still shows the
+        # last render — it faded during sleep, so default is repaint.
         print("unchanged: skipping refresh")
         log_wake("  unchanged, no refresh")
         if MICROPYTHON:
@@ -258,10 +261,12 @@ def run_forever():
         except Exception:
             pass
         try:
-            # Release global pad holds a previous sleep may have left;
-            # held pads would silently break the display SPI bus.
+            # Release the pad holds sleep left behind (held pads would
+            # silently break the display bus), but keep the rails up.
             import esp32
             esp32.gpio_deep_sleep_hold(False)
+            from machine import Pin
+            Pin(scheduler.EPD_PWR_EN_PIN, Pin.OUT, value=1, hold=False)
         except Exception:
             pass
 
