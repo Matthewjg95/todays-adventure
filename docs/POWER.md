@@ -70,12 +70,18 @@ against a frame pushed during the same boot.**
   - RTC-latch wake (`M5.Power.timerSleep`, and the raw BM8563
     TIE+GPIO2 sequence) powers off and never returns. Proven dead
     twice on battery. Do not retry without new information.
-- Before sleeping: quiesce the display (waitDisplay + panel sleep if
-  the binding exposes them). Do NOT cut the EPD power rail (pin 23):
-  an uncontrolled cut can discharge the panel (fades the image) and
-  guarantees a desynced controller. Pin 5 (external port) may be cut.
+- Before sleeping: HOLD the EPD power rail high —
+  `Pin(23, OUT, value=1, hold=True)` plus
+  `esp32.gpio_deep_sleep_hold(True)` (23 is a digital pad; the global
+  hold is required). Without this the pin floats during sleep and the
+  panel visibly fades within the hour. Release holds at boot before
+  M5.begin. Pin 5 (external port) may be cut.
+  (`waitDisplay`/`Lcd.sleep` do not exist in this binding — probed.)
 - `Pin(2, OUT, value=1, hold=True)` — GPIO2 is RTC-capable, so the
   individual hold survives deep sleep and the power latch stays up.
+- ALWAYS_RENDER: repaint every wake. Skipping a refresh is only valid
+  if the panel provably still shows the previous frame; assume it
+  does not.
 - 4-minute hardware WDT while awake: the 5 AM DNS hang recurs
   (first WiFi use after quiet hours); the WDT reset recovers it and
   is logged as `WATCHDOG reset`.
@@ -88,7 +94,12 @@ against a frame pushed during the same boot.**
 | Aug 4 | raw BM8563 TIE + GPIO2 low | same: powered off, never woke |
 | Aug 5 | deepsleep + EPD rail cut | woke perfectly all night; renders invisible → "blank" |
 | Aug 6 | deepsleep + EPD rail kept | still blank: reboot desyncs controller buffer; differential draws develop nothing |
-| Fix | deepsleep + full-frame GC16 compose-and-push | absolute updates need no sync |
+| Aug 7 | deepsleep + full-frame GC16 | renders visible, but the image FADES during each sleeping hour (verified live): pin 23 floats when the ESP32 isolates pads, the rail sags, the panel discharges. Unchanged-skip wakes never repainted, so the wall stayed blank |
+| Fix | deepsleep + GC16 full frames + EPD rail HELD through sleep + always render | 20-minute held-rail sleep verified: image stays crisp |
+
+Two independent erasers had to die: desynced differential draws
+(invisible content) and the floating EPD rail (fading content). Fixing
+either alone still shows a blank wall.
 
 ## Power budget
 
