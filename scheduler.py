@@ -215,17 +215,17 @@ EXT_PWR_EN_PIN = 5      # external port power
 
 
 def _peripherals_off():
-    """Quiesce for sleep. Cut only the external-port rail; never the
-    EPD rail (pin 23) — see docs/POWER.md. Let the display finish and
-    rest so the panel keeps its image cleanly through the night."""
+    """Park the panel, then trim rails.
+
+    powerSaveOn = IT8951 standby: parks the source/gate drivers so the
+    panel retains its image without active power — the same sequence
+    Arduino's proven shutdown uses. This replaces the pad-hold
+    approach: holding pin 23 required the GLOBAL digital-pad hold,
+    which freezes the SPI flash pins through sleep and the chip
+    (intermittently) cannot boot at wake — two lost days."""
     try:
         import M5
-        for name in ("waitDisplay", "waitDisplayed"):
-            fn = getattr(M5.Lcd, name, None)
-            if fn:
-                fn()
-                break
-        fn = getattr(M5.Lcd, "sleep", None)
+        fn = getattr(M5.Lcd, "powerSaveOn", None)
         if fn:
             fn()
     except Exception:
@@ -250,19 +250,12 @@ def sleep_until_next_update():
     # Wake = reset -> boot.py -> main.py, same as a cold boot.
     try:
         import machine
-        # Hold the main power latch AND the EPD power rail high through
-        # deep sleep. Without the EPD hold, pin 23 floats, the rail
-        # sags, and the panel discharges — the image visibly fades
-        # during the sleeping hour (observed live). Pin 23 is not an
-        # RTC pad, so the global deep-sleep hold is required for it;
-        # main.py releases the holds again at boot.
+        # ONLY the main power latch is held: GPIO2 is an RTC pad, its
+        # individual hold survives deep sleep without the global
+        # digital-pad hold. NEVER enable esp32.gpio_deep_sleep_hold —
+        # it freezes the SPI flash pins and the chip cannot reliably
+        # boot at wake (Aug 8-9: two sleeps never woke).
         machine.Pin(MAIN_PWR_PIN, machine.Pin.OUT, value=1, hold=True)
-        machine.Pin(EPD_PWR_EN_PIN, machine.Pin.OUT, value=1, hold=True)
-        try:
-            import esp32
-            esp32.gpio_deep_sleep_hold(True)
-        except (ImportError, AttributeError):
-            pass
         _peripherals_off()
         machine.deepsleep(secs * 1000)  # does not return
         return

@@ -95,6 +95,10 @@ class FullFrameCanvas:
         from M5 import Widgets
         M5.begin()
         self.lcd = M5.Lcd
+        try:
+            self.lcd.powerSaveOff()    # wake the panel out of standby
+        except Exception:
+            pass
         for rot in range(4):
             self.lcd.setRotation(rot)
             if self.lcd.width() == W and self.lcd.height() == H:
