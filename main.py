@@ -43,9 +43,15 @@ def battery_info():
         except Exception:
             pass
         try:
-            info["charging"] = bool(M5.Power.isCharging())
+            # isCharging() lies on this board (reports charging on
+            # battery). USB bus voltage doesn't: ~5000mV plugged,
+            # ~0 unplugged.
+            info["charging"] = int(M5.Power.getVBUSVoltage()) > 3000
         except Exception:
-            pass
+            try:
+                info["charging"] = bool(M5.Power.isCharging())
+            except Exception:
+                pass
         return info
     except Exception:
         return None
@@ -56,8 +62,11 @@ def battery_pct():
     return b["pct"] if b else None
 
 
-def battery_log_str():
-    b = battery_info()
+def battery_log_str(b=None):
+    """One battery string, used EVERYWHERE it appears — the log, the
+    corner stamp, the flashcard — so screen and log always agree."""
+    if b is None:
+        b = battery_info()
     if not b:
         return "?"
     if b["charging"]:
@@ -187,6 +196,7 @@ def update_display(ctx=None, force=False, night_watch=False):
     b = battery_info()
     ctx["battery_pct"] = b["pct"] if b else None
     ctx["battery_charging"] = bool(b and b["charging"])
+    ctx["battery_str"] = battery_log_str(b)
 
     score = scoring_engine.score_day(ctx)
     ctx["score"] = score
@@ -293,6 +303,7 @@ def show_flashcard():
         b = battery_info()
         ctx["battery_pct"] = b["pct"] if b else None
         ctx["battery_charging"] = bool(b and b["charging"])
+        ctx["battery_str"] = battery_log_str(b)
         cv = ui_renderer.make_canvas()
         ui_renderer.render_facts(cv, ctx)
         print("flashcard shown")
