@@ -11,3 +11,6 @@ __pycache__/
 
 # Tooling
 .claude/
+
+# Phone inbox (personal photos)
+inbox/
