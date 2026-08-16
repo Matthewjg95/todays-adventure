@@ -403,6 +403,41 @@ for _ in range(12):
     d.ellipse((x - r, y - r, x + r, y + r), fill=FOAM)
 
 # ============================================================
+# 9. RECOMPOSE -- close the dead sky band
+# ============================================================
+# The sky reserved y168..252 as empty paper, which read as a hole on
+# the panel. Lift everything from the sea up into it and extend the
+# deep foreground to fill behind, so the wave breathes into the top
+# of the frame instead of floating below a blank strip.
+LIFT = 74
+SEA_TOP = 252
+
+sea = img.crop((0, SEA_TOP, W, H))
+img.paste(sea, (0, SEA_TOP - LIFT))
+
+# extend the darkest foreground water into the gap left at the bottom
+tail = img.crop((0, H - LIFT - 30, W, H - LIFT))
+img.paste(tail.resize((W, LIFT + 30)), (0, H - LIFT - 30))
+for i in range(3):
+    y = H - LIFT + 6 + i * 22
+    stroke(cbez((0, y), (150, y - 7), (380, y + 7), (W, y - 4), n=20),
+           SEA_DEEP if i % 2 else SEA_DARK, 4)
+
+# retune the sky bands to the new proportions
+d.rectangle((0, 0, W, 58), fill=SKY0)
+d.rectangle((0, 58, W, 104), fill=SKY1)
+d.rectangle((0, 104, W, SEA_TOP - LIFT), fill=SKY2)
+
+# redraw the cartouche + seal on top of the reworked sky
+d.rectangle((30, 28, 92, 172), fill=FOAM)
+stroke([(30, 28), (92, 28), (92, 172), (30, 172), (30, 28)], INK, 3)
+for m in marks:
+    stroke(m, INK, 4)
+d.rectangle((36, 184, 64, 212), fill=140)
+stroke([(41, 191), (59, 191)], FOAM, 3)
+stroke([(41, 200), (59, 205)], FOAM, 3)
+
+# ============================================================
 # SAVE + VERIFY
 # ============================================================
 img.save(OUT)
