@@ -21,20 +21,48 @@ import scheduler
 MICROPYTHON = weather_service.MICROPYTHON
 
 
-def battery_pct():
-    """Battery percentage, or None. Logged every wake: the drain
-    curve is the only way to autopsy an unattended death."""
+def battery_info():
+    """{'pct', 'mv', 'charging'} or None.
+
+    The gauge is a voltmeter, not a fuel gauge: while charging it
+    reads the charger's ~4.2V and reports ~100% regardless of true
+    charge. Only on-battery readings mean anything — so log raw
+    millivolts and flag charging readings as untrustworthy."""
     if not MICROPYTHON:
         return None
     try:
         import M5
         try:
-            return int(M5.Power.getBatteryLevel())
+            pct = int(M5.Power.getBatteryLevel())
         except Exception:
             M5.begin()
-            return int(M5.Power.getBatteryLevel())
+            pct = int(M5.Power.getBatteryLevel())
+        info = {"pct": pct, "mv": None, "charging": None}
+        try:
+            info["mv"] = int(M5.Power.getBatteryVoltage())
+        except Exception:
+            pass
+        try:
+            info["charging"] = bool(M5.Power.isCharging())
+        except Exception:
+            pass
+        return info
     except Exception:
         return None
+
+
+def battery_pct():
+    b = battery_info()
+    return b["pct"] if b else None
+
+
+def battery_log_str():
+    b = battery_info()
+    if not b:
+        return "?"
+    if b["charging"]:
+        return "chg %smV" % b["mv"]      # charger voltage, not charge
+    return "%d%% %smV" % (b["pct"], b["mv"])
 
 
 def connect_wifi():
@@ -156,7 +184,9 @@ def update_display(ctx=None, force=False, night_watch=False):
         ctx = weather_service.build_context()
     if night_watch:
         ctx["is_night_watch"] = True
-    ctx["battery_pct"] = battery_pct()
+    b = battery_info()
+    ctx["battery_pct"] = b["pct"] if b else None
+    ctx["battery_charging"] = bool(b and b["charging"])
 
     score = scoring_engine.score_day(ctx)
     ctx["score"] = score
@@ -260,7 +290,9 @@ def show_flashcard():
             raw = None      # build_context fetches fresh
         ctx = weather_service.build_context(raw=raw)
         ctx["score"] = scoring_engine.score_day(ctx)
-        ctx["battery_pct"] = battery_pct()
+        b = battery_info()
+        ctx["battery_pct"] = b["pct"] if b else None
+        ctx["battery_charging"] = bool(b and b["charging"])
         cv = ui_renderer.make_canvas()
         ui_renderer.render_facts(cv, ctx)
         print("flashcard shown")
@@ -301,7 +333,7 @@ def run_forever():
     log_wake("boot (%s) [%s, clock=%s, batt=%s]"
              % ("button" if button_wake else "timer",
                 scheduler.WAKE_DETAIL, boot_source,
-                battery_pct()))
+                battery_log_str()))
     print("wake:", "button" if button_wake else "timer",
           scheduler.WAKE_DETAIL)
     if button_wake:
