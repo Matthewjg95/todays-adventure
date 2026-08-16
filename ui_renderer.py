@@ -164,6 +164,9 @@ class FullFrameCanvas:
     def arc(self, x, y, r, a0, a1):
         self.buf.drawArc(x, y, r + 1, r - 1, a0, a1, self._ink)
 
+    def draw_png(self, path, x, y):
+        self.buf.drawPng(path, x, y)
+
     def anim_mode(self, on):
         try:
             self.lcd.setEpdMode(4 if on else 1)
@@ -290,6 +293,9 @@ class UIFlow2Canvas:
         except Exception:
             return None
 
+    def draw_png(self, path, x, y):
+        self.lcd.drawPng(path, x, y)
+
     def anim_mode(self, on):
         # Fastest (binary) partial updates during motion; the glyphs
         # are pure black line art so nothing is lost.
@@ -325,6 +331,9 @@ class M5PaperCanvas:
         pass
 
     def anim_mode(self, on):
+        pass
+
+    def draw_png(self, *a):
         pass
 
     def text(self, x, y, s, size):
@@ -379,6 +388,9 @@ class TextCanvas:
         pass
 
     def anim_mode(self, on):
+        pass
+
+    def draw_png(self, *a):
         pass
 
     def text_width(self, s, size):
@@ -456,7 +468,8 @@ def _wrap(text, max_chars):
     return lines
 
 
-GLYPH = (W // 2, 165, 120)      # medallion center — shared with animation
+GLYPH = (W // 2, 140, 110)      # glyph home in the scene sky
+SCENES_DIR = "/flash/scenes"    # desktop-generated landscape art
 
 
 def _is_night(ctx):
@@ -499,7 +512,7 @@ def _headline(cv, text):
     max_w = W - 28
     for size in (S(40), 40):
         if cv.text_width(text, size) <= max_w:
-            _center3d(cv, 296 - (size - 40) // 2, text, size, depth=3)
+            _center3d(cv, 350 - (size - 40) // 2, text, size, depth=3)
             return
     words = text.split()
     best = None
@@ -510,10 +523,10 @@ def _headline(cv, text):
         if best is None or wid < best[0]:
             best = (wid, l1, l2)
     if best and best[0] <= max_w:
-        _center3d(cv, 260, best[1], 40, depth=3)
-        _center3d(cv, 310, best[2], 40, depth=3)
+        _center3d(cv, 332, best[1], 40, depth=3)
+        _center3d(cv, 382, best[2], 40, depth=3)
     else:
-        _center3d(cv, 304, text, 24, depth=2)
+        _center3d(cv, 356, text, 24, depth=2)
 
 
 def _sun_arc(cv, ctx):
@@ -567,23 +580,32 @@ def render(cv, ctx, headline_text, activities, wonder_text):
     — every day has a reason to be beautiful.
     """
     is_night = _is_night(ctx)
+    night_watch = ctx.get("is_night_watch")
 
-    # --- Date ---------------------------------------------------------
+    # --- The scene: a landscape for this weather -------------------------
+    # Art keeps its sky light (y 0..~200): the date and the animated
+    # glyph live there; hills and trees fill the band's lower third.
+    cond = ctx["condition"]
+    scene = "moon" if (night_watch or (is_night and cond == "clear")) \
+        else cond
+    try:
+        cv.draw_png("%s/%s.png" % (SCENES_DIR, scene), 0, 0)
+    except Exception:
+        pass                            # no art, no problem: plain sky
+
+    # --- Date, over the scene's sky --------------------------------------
     date_str = "%s, %s %d" % (ctx["weekday_name"], ctx["month_name"],
                               ctx["day"])
     cv.ink("gray")
-    _center(cv, 40, date_str.upper(), S(18))
+    _center(cv, 16, date_str.upper(), S(18))
 
     # --- The weather itself, or the moon at night watch ------------------
     # (No score: every day has a reason to be beautiful.)
-    night_watch = ctx.get("is_night_watch")
-    mx, my = W // 2, 165
     cv.ink("black")
     if night_watch:
-        artwork.moon(cv, mx, my, 120)
+        artwork.moon(cv, GLYPH[0], GLYPH[1], GLYPH[2])
     else:
-        artwork.draw(cv, ctx["condition"], GLYPH[0], GLYPH[1], GLYPH[2],
-                     is_night)
+        artwork.draw(cv, cond, GLYPH[0], GLYPH[1], GLYPH[2], is_night)
 
     # --- Headline ---------------------------------------------------------
     cv.ink("black")
@@ -591,18 +613,18 @@ def render(cv, ctx, headline_text, activities, wonder_text):
 
     # --- Temperature, and how today compares to yesterday ----------------
     cv.ink("gray")
-    _center(cv, 396, "%d\xb0" % round(ctx["temp"]), S(24))
+    _center(cv, 432, "%d\xb0" % round(ctx["temp"]), S(24))
     delta = ctx.get("temp_delta")
     if delta is not None and abs(delta) >= 4:
         note = "%d\xb0 %s than yesterday" % (
             abs(int(round(delta))),
             "warmer" if delta > 0 else "cooler")
         cv.ink("light")
-        _center(cv, 396 + S(24) + 10, note, 18)
+        _center(cv, 432 + S(24) + 10, note, 18)
 
     # --- The Wonder: today's one sentence worth reading ------------------
     cv.ink("light")
-    cv.line(W // 3, 475, 2 * W // 3, 475)
+    cv.line(W // 3, 508, 2 * W // 3, 508)
     cv.ink("black")
     wsize = S(24)
     max_chars = int(470 / (wsize * 0.6))
@@ -610,7 +632,7 @@ def render(cv, ctx, headline_text, activities, wonder_text):
     if len(lines) > 2 and wsize > 24:
         wsize = 24                      # long wonder: big doesn't fit
         lines = _wrap(wonder_text, 32)
-    y = 500
+    y = 532
     for line in lines:
         _center(cv, y, line, wsize)
         y += wsize + 14
@@ -619,8 +641,8 @@ def render(cv, ctx, headline_text, activities, wonder_text):
 
     # --- Gentle suggestions, dotted -------------------------------------
     asize = S(24)
-    y = max(620, y + 18)
-    if y > 740:
+    y = max(660, y + 18)
+    if y > 770:
         asize = 24                      # crowded screen: keep them small
     step = asize + (24 if asize == 24 else 8)
     for act in activities:

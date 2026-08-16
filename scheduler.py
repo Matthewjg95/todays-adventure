@@ -130,11 +130,24 @@ def woke_by_timer():
     established first.
     """
     global WAKE_DETAIL
-    # Strongest signal first: a deep-sleep reset can only be the timer.
+    # Strongest signal first: on a deep-sleep reset the chip records
+    # WHY it woke — its timer, or the armed wheel-press pin.
     try:
         import machine
         cause = machine.reset_cause()
         if cause == machine.DEEPSLEEP_RESET:
+            try:
+                reason = machine.wake_reason()
+                pin_wakes = []
+                for name in ("PIN_WAKE", "EXT0_WAKE", "EXT1_WAKE"):
+                    v = getattr(machine, name, None)
+                    if v is not None:
+                        pin_wakes.append(v)
+                if reason in pin_wakes:
+                    WAKE_DETAIL = "wheel press (ext0)"
+                    return False           # a human! show the card
+            except Exception:
+                pass
             WAKE_DETAIL = "deepsleep reset"
             return True
         if cause == machine.WDT_RESET:
@@ -167,6 +180,7 @@ def seconds_until_next_update():
 
 
 MAIN_PWR_PIN = 2        # M5Paper power latch (M5EPD_MAIN_PWR_PIN)
+WHEEL_PUSH_PIN = 38     # side wheel press (M5EPD key push, active low)
 
 
 def _shutdown_with_rtc_wake(secs):
@@ -256,6 +270,16 @@ def sleep_until_next_update():
         # it freezes the SPI flash pins and the chip cannot reliably
         # boot at wake (Aug 8-9: two sleeps never woke).
         machine.Pin(MAIN_PWR_PIN, machine.Pin.OUT, value=1, hold=True)
+        try:
+            # Arm the wheel-press (G38, active low, external pull-up)
+            # as a deep-sleep wake source — without this the side
+            # button is dead while the device sleeps, i.e. ~59
+            # minutes of every hour.
+            import esp32
+            esp32.wake_on_ext0(machine.Pin(WHEEL_PUSH_PIN,
+                                           machine.Pin.IN), 0)
+        except Exception:
+            pass
         _peripherals_off()
         machine.deepsleep(secs * 1000)  # does not return
         return
