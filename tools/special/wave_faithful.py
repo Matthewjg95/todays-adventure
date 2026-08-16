@@ -169,7 +169,10 @@ stroke([(41, 200), (59, 205)], FOAM, 3)
 # ============================================================
 d.rectangle((0, 470, W, 508), fill=SEA_LT)
 d.rectangle((0, 508, W, 700), fill=140)
-stroke([(0, 470), (W, 470)], 120, 2)
+# Inked here, BEFORE the wave is drawn, so the wave covers it and the
+# horizon only shows in the window where Fuji sits. (Drawing it after
+# everything ran the line straight across the wave.)
+stroke([(0, 470), (W, 470)], INK, 3)
 
 # ============================================================
 # 4. FUJI -- small, calm, snow-capped, alone in the window dip
@@ -440,10 +443,6 @@ foam_mask = img.point(lambda v: 255 if v >= 243 else 0)
 ring = ImageChops.subtract(foam_mask.filter(ImageFilter.MaxFilter(3)),
                            foam_mask)
 img.paste(INK, mask=ring)
-
-# the deep sea also needs its own top keyline against the sky
-horizon_y = 470 - LIFT
-stroke([(0, horizon_y), (W, horizon_y)], INK, 3)
 
 # redraw the cartouche + seal on top of the reworked sky
 d.rectangle((30, 28, 92, 172), fill=FOAM)
