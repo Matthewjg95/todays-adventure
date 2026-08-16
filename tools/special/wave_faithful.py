@@ -7,7 +7,7 @@
 import os
 import math
 import random
-from PIL import Image, ImageDraw, ImageChops
+from PIL import Image, ImageDraw, ImageChops, ImageFilter
 
 W, H = 540, 960
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -423,10 +423,27 @@ for i in range(3):
     stroke(cbez((0, y), (150, y - 7), (380, y + 7), (W, y - 4), n=20),
            SEA_DEEP if i % 2 else SEA_DARK, 4)
 
-# retune the sky bands to the new proportions
-d.rectangle((0, 0, W, 58), fill=SKY0)
-d.rectangle((0, 58, W, 104), fill=SKY1)
-d.rectangle((0, 104, W, SEA_TOP - LIFT), fill=SKY2)
+# retune the sky bands to the new proportions.
+# NOTE: e-ink quantizes to 16 levels (~17 apart). The old bokashi
+# (212/228/240 behind 250 foam) collapsed into one tone on the panel
+# and the crest vanished. These are spaced far enough to survive.
+d.rectangle((0, 0, W, 58), fill=176)
+d.rectangle((0, 58, W, 104), fill=190)
+d.rectangle((0, 104, W, SEA_TOP - LIFT), fill=204)
+
+# ---- keyblock outline around every foam mass -----------------
+# Hokusai's foam is bounded by the black keyblock. Without it, white
+# foam against a light sky has nothing holding it — on the panel the
+# crest read as an unframed smear. Dilate the foam mask and ink the
+# ring so every lobe, claw and scallop gets a printed edge.
+foam_mask = img.point(lambda v: 255 if v >= 243 else 0)
+ring = ImageChops.subtract(foam_mask.filter(ImageFilter.MaxFilter(3)),
+                           foam_mask)
+img.paste(INK, mask=ring)
+
+# the deep sea also needs its own top keyline against the sky
+horizon_y = 470 - LIFT
+stroke([(0, horizon_y), (W, horizon_y)], INK, 3)
 
 # redraw the cartouche + seal on top of the reworked sky
 d.rectangle((30, 28, 92, 172), fill=FOAM)
