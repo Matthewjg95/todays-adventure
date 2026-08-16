@@ -14,3 +14,6 @@ __pycache__/
 
 # Phone inbox (personal photos)
 inbox/
+
+# Local engineering knowledge base (field-notes skill) - never commit
+FIELD_NOTES.md
