@@ -30,6 +30,7 @@ ALWAYS_RENDER = True            # repaint every wake; the panel fades in
 BIG_TEXT = True                # experiment: every font one step bigger
 GLYPH_ANIMATE_SECONDS = 30      # weather glyph movement after each render
                                 # (0 disables; lively weather only)
+SCENE_SET = "v2"                # which art set to draw: v1 | v2 | v3
 
 # --- Weather API (Open-Meteo: free, no API key) ---------------------------
 WEATHER_URL = (

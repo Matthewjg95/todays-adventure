@@ -589,7 +589,9 @@ def render(cv, ctx, headline_text, activities, wonder_text):
     scene = "moon" if (night_watch or (is_night and cond == "clear")) \
         else cond
     try:
-        cv.draw_png("%s/%s.png" % (SCENES_DIR, scene), 0, 0)
+        cv.draw_png("%s/%s/%s.png"
+                    % (SCENES_DIR, getattr(config, "SCENE_SET", "v2"),
+                       scene), 0, 0)
     except Exception:
         pass                            # no art, no problem: plain sky
 

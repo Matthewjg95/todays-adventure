@@ -19,7 +19,7 @@ import random
 from PIL import Image, ImageDraw
 
 W, H = 540, 320
-OUT = os.path.join(os.path.dirname(__file__), "..", "scenes")
+OUT = os.path.join(os.path.dirname(__file__), "..", "scenes", "v2")
 
 WHITE = 255
 
