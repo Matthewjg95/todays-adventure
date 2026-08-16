@@ -644,6 +644,9 @@ def _upd_stamp(cv, ctx):
     if getattr(config, "SHOW_LAST_UPDATED", False) and "time_str" in ctx:
         cv.ink("light")
         stamp = "upd %s" % ctx["time_str"]
+        batt = ctx.get("battery_pct")
+        if batt is not None and batt <= 25:
+            stamp += "  batt %d%%" % batt    # quiet low-battery nudge
         cv.text(W - 12 - cv.text_width(stamp, 18), 934, stamp, 18)
 
 
@@ -704,6 +707,8 @@ def render_facts(cv, ctx):
         rows.append(("Tomorrow", "%d\xb0/%d\xb0, %d%% rain"
                      % (round(tom["high"]), round(tom["low"]),
                         tom["rain_prob"])))
+    if ctx.get("battery_pct") is not None:
+        rows.append(("Battery", "%d%%" % ctx["battery_pct"]))
     # (rows stay 24pt even in BIG_TEXT — 40pt values collide with
     # their labels, and this card is meant to be read up close)
     y = 185

@@ -21,12 +21,34 @@ import scheduler
 MICROPYTHON = weather_service.MICROPYTHON
 
 
+def battery_pct():
+    """Battery percentage, or None. Logged every wake: the drain
+    curve is the only way to autopsy an unattended death."""
+    if not MICROPYTHON:
+        return None
+    try:
+        import M5
+        try:
+            return int(M5.Power.getBatteryLevel())
+        except Exception:
+            M5.begin()
+            return int(M5.Power.getBatteryLevel())
+    except Exception:
+        return None
+
+
 def connect_wifi():
     if not MICROPYTHON:
         return
     import network
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
+    try:
+        # Cap TX power: full-power bursts on battery are the prime
+        # suspect for the rare mid-update hard deaths (brownout).
+        wlan.config(txpower=11)
+    except Exception:
+        pass
     if wlan.isconnected():
         return
     wlan.connect(config.WIFI_SSID, config.WIFI_PASSWORD)
@@ -134,6 +156,7 @@ def update_display(ctx=None, force=False, night_watch=False):
         ctx = weather_service.build_context()
     if night_watch:
         ctx["is_night_watch"] = True
+    ctx["battery_pct"] = battery_pct()
 
     score = scoring_engine.score_day(ctx)
     ctx["score"] = score
@@ -237,6 +260,7 @@ def show_flashcard():
             raw = None      # build_context fetches fresh
         ctx = weather_service.build_context(raw=raw)
         ctx["score"] = scoring_engine.score_day(ctx)
+        ctx["battery_pct"] = battery_pct()
         cv = ui_renderer.make_canvas()
         ui_renderer.render_facts(cv, ctx)
         print("flashcard shown")
@@ -274,9 +298,10 @@ def run_forever():
     # cause, quiet hours and night watch are all decided from it.
     boot_source = establish_time()
     button_wake = MICROPYTHON and not scheduler.woke_by_timer()
-    log_wake("boot (%s) [%s, clock=%s]"
+    log_wake("boot (%s) [%s, clock=%s, batt=%s]"
              % ("button" if button_wake else "timer",
-                scheduler.WAKE_DETAIL, boot_source))
+                scheduler.WAKE_DETAIL, boot_source,
+                battery_pct()))
     print("wake:", "button" if button_wake else "timer",
           scheduler.WAKE_DETAIL)
     if button_wake:
