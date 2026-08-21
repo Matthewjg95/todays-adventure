@@ -32,9 +32,18 @@ ALWAYS_RENDER = True            # repaint every wake; the panel fades in
 LOW_BATTERY_PCT = 20            # at/below: skip the glyph animation
 CRITICAL_BATTERY_PCT = 8        # at/below: no radio at all, just coast
 CRITICAL_SLEEP_MINUTES = 240    # how long to sleep while coasting
+CUT_EPD_RAIL_IN_SLEEP = True    # power down the display rail during
+                                # deep sleep (panel is parked first via
+                                # powerSaveOn, so it should retain).
+                                # UNDER TEST — flip False if the image
+                                # fades between hourly renders.
 BIG_TEXT = True                # experiment: every font one step bigger
-GLYPH_ANIMATE_SECONDS = 30      # weather glyph movement after each render
-                                # (0 disables; lively weather only)
+GLYPH_ANIMATE_SECONDS = 0       # glyph movement after each render.
+                                # 0 = one screen push per hour. The
+                                # detailed scenes carry the visual
+                                # interest now, and the animation was
+                                # the longest awake stretch (30s of
+                                # ~90s) on a 1.5-day battery.
 SCENE_SET = "v3"                # which art set to draw: v1 | v2 | v3
 
 # --- Weather API (Open-Meteo: free, no API key) ---------------------------

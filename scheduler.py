@@ -249,6 +249,20 @@ def _peripherals_off():
         Pin(EXT_PWR_EN_PIN, Pin.OUT).value(0)
     except Exception:
         pass
+    # The big battery lever: with the panel PARKED (powerSaveOn above),
+    # drive the EPD rail firmly low before sleeping. This is the
+    # Arduino-shutdown order (park, then cut) — distinct from the old
+    # failure, where the rail floated under an *unparked* panel and
+    # the image discharged. During deep sleep the pin floats anyway,
+    # but from 0V with parked drivers, not from sagging mid-rail.
+    if getattr(config, "CUT_EPD_RAIL_IN_SLEEP", False):
+        try:
+            import time as _t
+            _t.sleep(0.3)          # let the standby command settle
+            from machine import Pin
+            Pin(EPD_PWR_EN_PIN, Pin.OUT).value(0)
+        except Exception:
+            pass
 
 
 def sleep_until_next_update():
