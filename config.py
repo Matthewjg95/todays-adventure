@@ -27,6 +27,11 @@ NIGHT_WAKE_HOURS = (23, 1, 3)   # ...except these: night-watch renders
 SHOW_LAST_UPDATED = True        # prototyping: render time, bottom right
 ALWAYS_RENDER = True            # repaint every wake; the panel fades in
                                 # sleep, so skipping leaves it blank
+
+# --- Battery survival -----------------------------------------------------
+LOW_BATTERY_PCT = 20            # at/below: skip the glyph animation
+CRITICAL_BATTERY_PCT = 8        # at/below: no radio at all, just coast
+CRITICAL_SLEEP_MINUTES = 240    # how long to sleep while coasting
 BIG_TEXT = True                # experiment: every font one step bigger
 GLYPH_ANIMATE_SECONDS = 30      # weather glyph movement after each render
                                 # (0 disables; lively weather only)

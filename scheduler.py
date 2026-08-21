@@ -255,6 +255,11 @@ def sleep_until_next_update():
     secs = seconds_until_next_update()
     # keep a sane range: at least 1 min, at most the full interval
     secs = max(60, min(secs, config.UPDATE_INTERVAL_MINUTES * 60))
+    sleep_for(secs)
+
+
+def sleep_for(secs):
+    secs = max(60, int(secs))
 
     # ESP32 deep sleep: the wake timer is inside the chip, so it fires
     # regardless of firmware or the RTC-to-power-latch circuit — which

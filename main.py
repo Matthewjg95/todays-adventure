@@ -42,16 +42,14 @@ def battery_info():
             info["mv"] = int(M5.Power.getBatteryVoltage())
         except Exception:
             pass
-        try:
-            # isCharging() lies on this board (reports charging on
-            # battery). USB bus voltage doesn't: ~5000mV plugged,
-            # ~0 unplugged.
-            info["charging"] = int(M5.Power.getVBUSVoltage()) > 3000
-        except Exception:
-            try:
-                info["charging"] = bool(M5.Power.isCharging())
-            except Exception:
-                pass
+        # Charging detection, the hard way. isCharging() lies (returns
+        # True on battery) and getVBUSVoltage() returns -1 on this
+        # board — unimplemented. What does not lie is the cell itself:
+        # under load a 1S li-ion cannot sit above ~4.15V unless a
+        # charger is holding it there. Measured: battery max ever
+        # logged 3718mV; plugged readings 4184-4274mV.
+        if info["mv"]:
+            info["charging"] = info["mv"] >= 4150
         return info
     except Exception:
         return None
@@ -94,6 +92,24 @@ def connect_wifi():
             return
         time.sleep(1)
     raise OSError("WiFi connect failed")
+
+
+def wifi_off():
+    """Shut the radio down the moment we're done with it.
+
+    It used to stay active for the whole wake — including the 30s
+    animation — and through deep sleep. On battery that is pure waste.
+    """
+    if not MICROPYTHON:
+        return
+    try:
+        import network
+        wlan = network.WLAN(network.STA_IF)
+        if wlan.active():
+            wlan.disconnect()
+            wlan.active(False)
+    except Exception:
+        pass
 
 
 def sync_clock():
@@ -228,8 +244,17 @@ def update_display(ctx=None, force=False, night_watch=False):
     print("rendered: %s | %s | %s"
           % (head, ", ".join(activities), wonder_text))
 
+    # Network work is done; drop the radio before the slow part.
+    wifi_off()
+
     # A few seconds of glyph motion — rain falls, rays breathe.
+    # Skipped on a low battery: it is the single longest awake stretch.
     secs = getattr(config, "GLYPH_ANIMATE_SECONDS", 0)
+    pct = ctx.get("battery_pct")
+    if (pct is not None and not ctx.get("battery_charging")
+            and pct <= getattr(config, "LOW_BATTERY_PCT", 20)):
+        secs = 0
+        log_wake("  low battery: animation skipped")
     if MICROPYTHON and secs:
         try:
             ui_renderer.animate_glyph(cv, ctx, secs)
@@ -353,6 +378,23 @@ def run_forever():
         if wdt:
             wdt.feed()
         try:
+            # Critical battery: do NOT touch the radio. The device
+            # died on 2026-08-18 because the 5 AM update hung at 0%,
+            # the watchdog retried, and the WiFi burst collapsed the
+            # rail to 2848mV. Coast on the last image instead.
+            b = battery_info()
+            crit = getattr(config, "CRITICAL_BATTERY_PCT", 8)
+            if b and not b["charging"] and b["pct"] <= crit:
+                log_wake("CRITICAL battery %s — skipping update, "
+                         "long sleep" % battery_log_str(b))
+                print("critical battery: coasting")
+                wifi_off()
+                scheduler.note_expected_wake(
+                    config.CRITICAL_SLEEP_MINUTES * 60)
+                scheduler.sleep_for(
+                    config.CRITICAL_SLEEP_MINUTES * 60)
+                continue
+
             source = establish_time()
             hour = local_hour()
             if hour is None:
