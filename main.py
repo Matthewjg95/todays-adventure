@@ -228,13 +228,12 @@ def update_display(ctx=None, force=False, night_watch=False):
             and not getattr(config, "ALWAYS_RENDER", True):
         # Skipping is only safe if the panel provably still shows the
         # last render — it faded during sleep, so default is repaint.
+        # No stamp repaint either: it was differential post-reboot
+        # (unreliable) and cost a display power-up per skipped wake.
+        # The upd stamp shows the last RENDER; wake_log.txt is the
+        # proof of life.
         print("unchanged: skipping refresh")
         log_wake("  unchanged, no refresh")
-        if MICROPYTHON:
-            try:      # keep the corner stamp current: proof of life
-                ui_renderer.refresh_stamp(ctx)
-            except Exception:
-                pass
         return ctx, score, head, activities, wonder_text
     state["last_render"] = fp
 
@@ -341,6 +340,22 @@ def show_flashcard():
     weather_service._save_json(config.STATE_FILE, state)
 
 
+def _seconds_to_next_night_event(hour):
+    """Seconds from now (top-of-hour wake) to the next hour that has
+    work: a night-watch render or the end of quiet hours. Clamped to
+    4h as a safety net against clock math surprises."""
+    events = set(config.NIGHT_WAKE_HOURS) | {config.QUIET_END}
+    for ahead in range(1, 25):
+        if (hour + ahead) % 24 in events:
+            break
+    else:
+        ahead = 1
+    # align to the top of that hour using the current minute
+    minute = time.localtime()[4]
+    secs = ahead * 3600 - minute * 60
+    return max(600, min(secs, 4 * 3600))
+
+
 def run_forever():
     # Hardware watchdog: if ANYTHING hangs (a dead socket, a wedged
     # panel), the chip resets and the next boot recovers. Deep sleep
@@ -409,8 +424,17 @@ def run_forever():
                     log_wake("night watch %02d:00 (%s)" % (hour, source))
                     update_display(night_watch=True)
                 else:
-                    log_wake("quiet skip %02d:00 (%s)" % (hour, source))
-                    print("quiet hours: skipping update")
+                    # Sleep STRAIGHT to the next event hour instead of
+                    # booting every hour just to decide to skip — each
+                    # pointless boot costs ~10s awake.
+                    secs = _seconds_to_next_night_event(hour)
+                    log_wake("quiet %02d:00 (%s): sleeping %dm to "
+                             "next event" % (hour, source, secs // 60))
+                    print("quiet hours: long sleep %ds" % secs)
+                    button_wake = False
+                    scheduler.note_expected_wake(secs)
+                    scheduler.sleep_for(secs)
+                    continue
             else:
                 log_wake("update %02d:00 (%s)" % (hour, source))
                 update_display()

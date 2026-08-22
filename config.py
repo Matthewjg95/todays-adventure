@@ -25,8 +25,10 @@ QUIET_START = 23                # no hourly updates from this local hour...
 QUIET_END = 5                   # ...until this one (saves battery overnight)
 NIGHT_WAKE_HOURS = (23, 1, 3)   # ...except these: night-watch renders
 SHOW_LAST_UPDATED = True        # prototyping: render time, bottom right
-ALWAYS_RENDER = True            # repaint every wake; the panel fades in
-                                # sleep, so skipping leaves it blank
+ALWAYS_RENDER = False           # skip the push when nothing changed.
+                                # Safe again since 2026-08-21: the
+                                # panel is parked before the rail cut
+                                # and provably retains through sleep
 
 # --- Battery survival -----------------------------------------------------
 LOW_BATTERY_PCT = 20            # at/below: skip the glyph animation

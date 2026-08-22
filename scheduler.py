@@ -173,10 +173,18 @@ def woke_by_timer():
 
 
 def seconds_until_next_update():
-    """Seconds until the top of the next interval (wakes on the hour)."""
+    """Seconds until the top of the next interval (wakes on the hour).
+
+    Deep sleep undershoots by ~1 min, so a wake at :59 used to compute
+    ~40s and boot AGAIN at :00 — two full boots every hour. If the
+    next top is closer than 3 min, this wake already did that hour's
+    work; roll to the following one."""
     interval = config.UPDATE_INTERVAL_MINUTES * 60
     now = time.time()
-    return int(interval - (now % interval)) or interval
+    secs = int(interval - (now % interval)) or interval
+    if secs < 180:
+        secs += interval
+    return secs
 
 
 MAIN_PWR_PIN = 2        # M5Paper power latch (M5EPD_MAIN_PWR_PIN)
