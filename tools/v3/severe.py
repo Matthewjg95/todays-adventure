@@ -107,9 +107,9 @@ d.line([(0, 248), (80, 241), (180, 248), (300, 240), (420, 248),
 
 # small distant trees on the mid hill, all bowed the same way
 for tx in (52, 246, 332, 366):
-    d.line([(tx, 247), (tx + 8, 236)], fill=78, width=3)
-    d.polygon([(tx + 3, 240), (tx + 8, 231), (tx + 24, 234), (tx + 20, 241)],
-              fill=78)
+    d.line([(tx, 247), (tx + 7, 237)], fill=78, width=3)
+    d.ellipse([tx + 1, 230, tx + 23, 240], fill=78)
+    d.ellipse([tx + 18, 233, tx + 30, 240], fill=78)
 
 # ================================================================ PLANE 3: near field
 d.polygon([(0, 266), (90, 259), (210, 267), (340, 258), (460, 266),
@@ -128,8 +128,11 @@ def pole(x, ytop, ybot, lean):
     d.line([(xt - 11, ytop + 6), (xt + 11, ytop + 6)], fill=INK, width=3)
     return (xt, ytop + 6)
 
-p1 = pole(24, 188, 268, 9)
-p2 = pole(108, 192, 268, 12)
+p2 = pole(14, 188, 268, 9)
+# second pole snapped off mid-height: splintered stub
+d.line([(134, 268), (137, 234)], fill=INK, width=5)
+d.line([(133, 236), (137, 228)], fill=INK, width=2)
+d.line([(137, 236), (140, 230)], fill=INK, width=2)
 
 def span(a, b, sag, wid=2):
     pts = []
@@ -140,11 +143,10 @@ def span(a, b, sag, wid=2):
         pts.append((x, y))
     d.line(pts, fill=INK, width=wid)
 
-span((p1[0] - 9, p1[1]), (p2[0] - 9, p2[1]), 17)
-span((p1[0] + 9, p1[1]), (p2[0] + 9, p2[1]), 20)
-# downed line whipping from the second pole to the ground
-span((p2[0] + 9, p2[1]), (152, 262), 12)
-d.ellipse([146, 258, 156, 266], outline=INK, width=2)  # coiled end
+# lines from the standing pole droop all the way to the ground by the
+# snapped stub -- the span is down
+span((p2[0] - 8, p2[1]), (126, 264), 14)
+span((p2[0] + 8, p2[1]), (142, 260), 18)
 
 # ================================================================ FARMHOUSE (right, battened down)
 hx = 398
@@ -198,29 +200,30 @@ def bent_tree(bx, by, s, canopy=True):
     tipx, tipy = spine[-1]
     if canopy:
         # single streaming teardrop canopy with a ragged trailing edge
-        c = [(tipx - 14 * s, tipy + 2 * s), (tipx - 8 * s, tipy - 12 * s),
-             (tipx + 8 * s, tipy - 16 * s), (tipx + 28 * s, tipy - 12 * s),
-             (tipx + 48 * s, tipy - 6 * s), (tipx + 58 * s, tipy - 1 * s),
-             (tipx + 46 * s, tipy + 1 * s), (tipx + 56 * s, tipy + 5 * s),
-             (tipx + 40 * s, tipy + 6 * s), (tipx + 48 * s, tipy + 11 * s),
-             (tipx + 26 * s, tipy + 10 * s), (tipx + 6 * s, tipy + 9 * s)]
+        c = [(tipx - 12 * s, tipy + 2 * s), (tipx - 7 * s, tipy - 11 * s),
+             (tipx + 6 * s, tipy - 15 * s), (tipx + 20 * s, tipy - 11 * s),
+             (tipx + 33 * s, tipy - 6 * s), (tipx + 42 * s, tipy - 1 * s),
+             (tipx + 33 * s, tipy + 1 * s), (tipx + 40 * s, tipy + 5 * s),
+             (tipx + 28 * s, tipy + 6 * s), (tipx + 34 * s, tipy + 10 * s),
+             (tipx + 19 * s, tipy + 9 * s), (tipx + 5 * s, tipy + 8 * s)]
         d.polygon(c, fill=INK)
     # whipping branches off the lee side
-    for t, ln in ((0.5, 22), (0.7, 26), (0.85, 18)):
+    for t, ln in ((0.5, 18), (0.7, 22), (0.85, 15)):
         i = int(t * 12)
         x0, y0 = spine[i]
         d.line([(x0, y0), (x0 + s * ln, y0 - s * 5)], fill=INK, width=max(2, int(2 * s)))
     # torn leaves streaming downwind of the canopy
     for _ in range(int(7 * s)):
-        lx = tipx + s * R.uniform(46, 78)
+        lx = tipx + s * R.uniform(46, 62)
         ly = tipy + s * R.uniform(-8, 10)
-        d.ellipse([lx, ly, lx + 5, ly + 3], fill=INK)
+        if lx < 150 or lx > RM:
+            d.ellipse([lx, ly, lx + 5, ly + 3], fill=INK)
     return tipx, tipy
 
-# big windward tree, left foreground (canopy stays left of x=156 after scrub)
-bent_tree(30, 306, 1.35)
-# smaller tree behind/right of the house, same bow
-bent_tree(470, 296, 0.85, canopy=True)
+# big windward tree, left foreground, drawn over the pole (canopy < x=156)
+bent_tree(48, 310, 1.1)
+# smaller tree at the right edge, same bow, canopy streaming off-canvas
+bent_tree(500, 296, 0.9, canopy=True)
 
 # ================================================================ SNAPPED BRANCH down in the yard (center-bottom)
 bx0, by0 = 200, 302
@@ -253,9 +256,9 @@ for _ in range(9):
     x = R.uniform(8, 138)
     y = R.uniform(232, 262)
     d.line([(x, y), (x + R.uniform(7, 14), y - R.uniform(1, 4))], fill=INK, width=2)
-for _ in range(6):
-    x = R.uniform(392, 516)
-    y = R.uniform(230, 250)
+for _ in range(5):
+    x = R.uniform(386, 396) if R.random() < 0.4 else R.uniform(504, 526)
+    y = R.uniform(230, 252)
     d.line([(x, y), (x + R.uniform(7, 14), y - R.uniform(1, 4))], fill=INK, width=2)
 
 # ================================================================ SAFETY SCRUB: force glyph zone + date strip white
