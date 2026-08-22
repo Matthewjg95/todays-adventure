@@ -147,6 +147,12 @@ WONDERS = [
                      "Meteors after dark."],
            priority=88),
 
+    Wonder("severe weather",
+           when=lambda c: c["condition"] == "severe",
+           messages=["Let the sky have today. Yours is inside.",
+                     "Nothing out there is worth it right now."],
+           priority=95),
+
     Wonder("first snow",
            when=lambda c: c["is_first_snow"],
            messages=["The first snow is here.",

@@ -583,6 +583,24 @@ def render(cv, ctx, headline_text, activities, wonder_text):
     cv.ink("light")
     cv.line(W // 3, y + 8, 2 * W // 3, y + 8)
 
+    # --- The daily adventure: today's actual plan ------------------------
+    adv = ctx.get("adventure")
+    if adv and not night_watch:
+        y_adv = y + 40
+        asz = S(24)
+        tw = cv.text_width(adv, asz)
+        x0 = (W - (tw + 28)) // 2
+        cv.ink("black")
+        mx0 = x0 + 7
+        my0 = y_adv + int(asz * 0.55)
+        for (a1, b1, a2, b2) in ((mx0, my0 - 7, mx0 + 7, my0),
+                                 (mx0 + 7, my0, mx0, my0 + 7),
+                                 (mx0, my0 + 7, mx0 - 7, my0),
+                                 (mx0 - 7, my0, mx0, my0 - 7)):
+            cv.line(a1, b1, a2, b2)
+        cv.text(x0 + 28, y_adv, adv, asz)
+        y = y_adv + 14
+
     # --- Gentle suggestions, dotted -------------------------------------
     asize = S(24)
     y = max(660, y + 18)
@@ -610,7 +628,7 @@ def _upd_stamp(cv, ctx):
     if getattr(config, "SHOW_LAST_UPDATED", False) and "time_str" in ctx:
         cv.ink("light")
         stamp = "upd %s" % ctx["time_str"]
-        if ctx.get("battery_str"):
+        if ctx.get("battery_str") and ctx["battery_str"] != "?":
             # same string as the wake log, visible per-render so the
             # trend can be read off the screen over time
             stamp += "  " + ctx["battery_str"]

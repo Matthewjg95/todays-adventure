@@ -11,6 +11,7 @@ import sys
 import time
 
 import config
+import adventures
 import weather_service
 import scoring_engine
 import recommendation_engine
@@ -198,6 +199,7 @@ def _fingerprint(ctx, head, activities, wonder_text):
         # after midnight counts as night too, not just after sunset
         "day" if ctx["sunrise_minutes"] <= ctx["now_minutes"]
         <= ctx["sunset_minutes"] else "night",
+        ctx.get("adventure") or "",
         "nw%d" % ctx["hour"] if ctx.get("is_night_watch") else "",
     ))
 
@@ -218,8 +220,11 @@ def update_display(ctx=None, force=False, night_watch=False):
     ctx["score"] = score
     head = scoring_engine.headline(ctx, score)
     wonder_text = wonder_engine.wonder(ctx)
+    ctx["adventure"] = adventures.today(ctx)
     activities = recommendation_engine.recommend(
-        ctx, avoid=head + " " + wonder_text)
+        ctx, avoid=" ".join((head, wonder_text, ctx["adventure"] or "")))
+    if ctx["adventure"]:
+        activities = activities[:2]     # the adventure line is the star
 
     # Only touch the e-ink when something meaningful changed.
     fp = _fingerprint(ctx, head, activities, wonder_text)

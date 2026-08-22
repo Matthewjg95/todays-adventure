@@ -53,6 +53,12 @@ def _stargazing(c):
 
 
 RULES = [
+    # ---- Severe weather --------------------------------------------------
+    Rule("severe weather",
+         when=lambda c: c["condition"] == "severe",
+         gives=["Stay In", "Check On Someone", "Charge Your Devices"],
+         priority=300),
+
     # ---- Night watch -----------------------------------------------------
     Rule("night watch",
          when=lambda c: c.get("is_night_watch"),

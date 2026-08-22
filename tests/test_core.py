@@ -159,7 +159,7 @@ class TestWeatherService(unittest.TestCase):
     def test_condition_buckets(self):
         self.assertEqual(ws._condition_from_code(0), "clear")
         self.assertEqual(ws._condition_from_code(63), "rain")
-        self.assertEqual(ws._condition_from_code(75), "snow")
+        self.assertEqual(ws._condition_from_code(73), "snow")
         self.assertEqual(ws._condition_from_code(95), "storm")
         self.assertEqual(ws._condition_from_code(999), "cloudy")  # unknown
 
@@ -177,6 +177,64 @@ class TestWeatherService(unittest.TestCase):
         for d in (1, 10, 20, 28):
             p = ws.moon_phase(2026, 8, d)
             self.assertTrue(0.0 <= p < 1.0)
+
+
+import adventures
+
+
+class TestAdventures(unittest.TestCase):
+    def test_same_all_day_different_hours(self):
+        picks = {adventures.today(ctx(hour=h, now_minutes=h * 60))
+                 for h in (8, 12, 17, 20)}
+        self.assertEqual(len(picks), 1)
+        self.assertIsNotNone(picks.pop())
+
+    def test_varies_across_days(self):
+        picks = {adventures.today(ctx(day=d)) for d in range(1, 15)}
+        self.assertGreater(len(picks), 3)
+
+    def test_suppressed_when_inclement(self):
+        for over in ({"condition": "severe"}, {"condition": "rain"},
+                     {"condition": "storm"}, {"rain_prob": 80},
+                     {"feels_like": 5.0}, {"feels_like": 100.0}):
+            self.assertIsNone(adventures.today(ctx(**over)), over)
+
+    def test_persists_through_cold_and_gray(self):
+        for over in ({"condition": "cloudy", "feels_like": 20.0},
+                     {"condition": "fog"},
+                     {"condition": "snow", "wind": 5.0}):
+            self.assertIsNotNone(adventures.today(ctx(**over)), over)
+
+    def test_suppressed_at_night_watch(self):
+        self.assertIsNone(adventures.today(ctx(is_night_watch=True)))
+
+    def test_weekend_only_respected(self):
+        for d in range(1, 29):
+            c = ctx(day=d, weekday=2, is_weekend=False)
+            pick = adventures.today(c)
+            if pick:
+                entry = next(a for a in adventures.ADVENTURES
+                             if a["name"] == pick)
+                self.assertFalse(entry.get("weekend_only", False), pick)
+
+
+class TestSevereWeather(unittest.TestCase):
+    def test_heavy_codes_map_to_severe(self):
+        for code in (65, 75, 96, 99):
+            self.assertEqual(ws._condition_from_code(code), "severe")
+        self.assertEqual(ws._condition_from_code(61), "rain")
+
+    def test_wind_upgrades_precip(self):
+        self.assertEqual(ws._condition_from_code(61, wind=35), "severe")
+        self.assertEqual(ws._condition_from_code(0, wind=35), "clear")
+
+    def test_severe_tone(self):
+        c = ctx(condition="severe")
+        self.assertEqual(scoring_engine.headline(c, 50),
+                         "LET THE STORM PASS")
+        self.assertIn("Stay In", rec.recommend(c))
+        self.assertIn("inside", wonder_engine.wonder(c).lower()
+                      + wonder_engine.wonder(c))
 
 
 class TestBattery(unittest.TestCase):

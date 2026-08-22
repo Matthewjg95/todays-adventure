@@ -229,6 +229,7 @@ GLYPHS = {
     "cloudy": cloud,
     "rain": rain,
     "storm": storm,
+    "severe": storm,
     "snow": snow,
     "fog": fog,
     "moon": moon,
@@ -315,6 +316,7 @@ def _anim_fog(cv, cx, cy, size, t):
 _ANIMATORS = {
     "rain": _anim_rain,
     "storm": _anim_storm,
+    "severe": _anim_storm,
     "snow": _anim_snow,
     "clear": _anim_clear,
     "fog": _anim_fog,

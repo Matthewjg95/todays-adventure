@@ -30,11 +30,23 @@ _CODE_MAP = {
 }
 
 
-def _condition_from_code(code):
+# Heavy/dangerous variants get their own condition: severe weather
+# suppresses the daily adventure and gets its own scene and tone.
+_SEVERE_CODES = (65, 67, 75, 82, 86, 96, 99)
+
+
+def _condition_from_code(code, wind=0):
+    if code in _SEVERE_CODES:
+        return "severe"
     for name, codes in _CODE_MAP.items():
         if code in codes:
-            return name
-    return "cloudy"
+            base = name
+            break
+    else:
+        base = "cloudy"
+    if base in ("rain", "snow", "storm") and wind >= 30:
+        return "severe"          # ordinary precip + damaging wind
+    return base
 
 
 def _parse_hhmm(iso_string):
@@ -206,7 +218,8 @@ def build_context(now=None, raw=None):
         "wind": cur["wind_speed_10m"],
         "precip_now": cur["precipitation"],
         "rain_prob": rain_prob,
-        "condition": _condition_from_code(cur["weather_code"]),
+        "condition": _condition_from_code(cur["weather_code"],
+                                          cur["wind_speed_10m"]),
         "high": daily["temperature_2m_max"][0],
         "low": daily["temperature_2m_min"][0],
         # sun
