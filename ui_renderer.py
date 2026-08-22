@@ -83,7 +83,7 @@ class FullFrameCanvas:
     the reboot desyncs the IT8951's internal buffer from the panel,
     and differential draws against a desynced buffer develop nothing
     (the recurring blank screen). An absolute full frame needs no
-    sync. See docs/POWER.md.
+    sync. See FIELD_NOTES.md (local).
     """
 
     BLACK = 0x000000
@@ -313,61 +313,6 @@ class UIFlow2Canvas:
             pass
 
 
-class M5PaperCanvas:
-    """Legacy UIFlow 1.x (MicroPython) backend for M5Paper v1.1."""
-
-    def __init__(self):
-        from m5stack import lcd  # noqa: UIFlow M5Paper firmware
-        self.lcd = lcd
-        lcd.clear(lcd.WHITE)
-
-    def ink(self, shade):
-        pass  # legacy backend draws everything in black
-
-    def text3d(self, x, y, s, size, depth=3):
-        self.text(x, y, s, size)
-
-    def rect_white(self, x, y, w, h):
-        pass
-
-    def anim_mode(self, on):
-        pass
-
-    def draw_png(self, *a):
-        pass
-
-    def text(self, x, y, s, size):
-        # UIFlow bundles DejaVu fonts at fixed sizes; pick nearest.
-        lcd = self.lcd
-        if size >= 72:
-            lcd.font(lcd.FONT_DejaVu72)
-        elif size >= 40:
-            lcd.font(lcd.FONT_DejaVu40)
-        elif size >= 24:
-            lcd.font(lcd.FONT_DejaVu24)
-        else:
-            lcd.font(lcd.FONT_DejaVu18)
-        lcd.print(s, x, y, lcd.BLACK)
-
-    def text_width(self, s, size):
-        # DejaVu is roughly 0.6em average advance.
-        return int(len(s) * size * 0.6)
-
-    def line(self, x0, y0, x1, y1):
-        self.lcd.line(x0, y0, x1, y1, self.lcd.BLACK)
-
-    def circle(self, x, y, r):
-        self.lcd.circle(x, y, r, self.lcd.BLACK)
-
-    def fill_circle(self, x, y, r):
-        self.lcd.circle(x, y, r, self.lcd.BLACK, self.lcd.BLACK)
-
-    def fill_circle_white(self, x, y, r):
-        self.lcd.circle(x, y, r, self.lcd.WHITE, self.lcd.WHITE)
-
-    def show(self):
-        pass  # UIFlow lcd draws straight to the panel
-
 
 class TextCanvas:
     """Desktop simulation: renders an ASCII mockup to stdout."""
@@ -432,10 +377,7 @@ def make_canvas(clear=True):
         return UIFlow2Canvas(clear=clear)
     except ImportError:
         pass
-    try:
-        return M5PaperCanvas()
-    except ImportError:
-        return TextCanvas()
+    return TextCanvas()
 
 
 # --------------------------------------------------------------------------
@@ -674,18 +616,6 @@ def _upd_stamp(cv, ctx):
             stamp += "  " + ctx["battery_str"]
         cv.text(W - 12 - cv.text_width(stamp, 18), 934, stamp, 18)
 
-
-def refresh_stamp(ctx):
-    """Repaint just the stamp corner (device only): called on
-    unchanged wakes so a working skip doesn't read as a freeze."""
-    cv = make_canvas(clear=False)
-    cv.ink("light")
-    cv.rect_white(W - 190, 928, 190, 30)
-    _upd_stamp(cv, ctx)
-    cv.show()
-
-
-_DAYS_IN_MONTH = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 
 
 def _day_of_year(ctx):
