@@ -1,0 +1,30 @@
+{
+ "files": {
+  "adventures.py": "bdc4478d4f6743b156835e48ce2bacd371f6c0ad7460d51d0652d854734dac12",
+  "artwork.py": "c2fe7f959d7e1d3c71a5e5a25f908e09cb3b60c84eba1a145e5b64e01ca3915b",
+  "config.py": "224b256ef263f1b4e494059a5187e091b73284da2d4f72ccaa1ccdb13b6178a3",
+  "events.py": "b7fa4339dbafc6c022aa05f7cd458949808a010c45c164c076f5117e42eb0a65",
+  "main.py": "2c850c028a37fe923012f62cfdc044c2134f1e20c0d629a15b2f34dd2d833c80",
+  "ota.py": "6104eb3dc0f67ef200f91c58e90cc72919b7b014151ae0422ee334cb2ec8b271",
+  "recommendation_engine.py": "8831f1a4f58a53a3cd001c7eb1af9fca0c086c7d649faf33af9bd6c164a072e4",
+  "scenes/special/samurai.png": "7ce6deabf422deb2f58f480a3d705f10459ee59ac9f02872102f06897350b1ab",
+  "scenes/special/wave_faithful.png": "bfec7f953c074d6862c115253a9830cb10a5a5e0b1e26d96e288042cd72cbc63",
+  "scenes/special/wave_wild.png": "764f2c6ca7ad62cd59422a5a23f402ed9803e5f070788ee2e9d8ea1bcb576908",
+  "scenes/special/wave_woodblock.png": "ba0d18431b70c23d929f35ba9c8d158672e4148c23669813b1d346ad62247e6f",
+  "scenes/v3/clear.png": "fa111ff53c3cfcfba3ca153e1ab5e478133a1b7093616f16fe93578f9a8a2c60",
+  "scenes/v3/cloudy.png": "fa7e7dd8a4b247fb2ce962823088483dd4f2a4353e1a5d595a0180f4d96da575",
+  "scenes/v3/fog.png": "97ce18d53fba73eefa1143cf649223712b6fd565d182f06cdf8f9a6b887655f5",
+  "scenes/v3/moon.png": "500c1519087ebaade317be86264bfc509a01209c41a5747279428281d0af3aa6",
+  "scenes/v3/partly.png": "5f37ded553c055028c618362d526c7d3624e32b08bd0b5ccd5ac38c740f6d8ff",
+  "scenes/v3/rain.png": "8c7e6d9571f996ceeea796ff302853d8c77d10abbc386e3bb0de98e4fb676e07",
+  "scenes/v3/severe.png": "18c0a3885a324450b7698cb8fb01ea95abc8945bc0476f69413c6d67f4f02fce",
+  "scenes/v3/snow.png": "d33e199dcd2e6a56fd4643c1ca6e5ed5c8c84b67993a79efd25ba5c78e550e76",
+  "scenes/v3/storm.png": "ad6c673e4034fc8d0a818efc03cf62a8f55fa710ce0d4435f05e7408ab0628d7",
+  "scheduler.py": "671afbd78633e53e0a630a576269c1670e5ad5901a3891f6d6c0691f1d167486",
+  "scoring_engine.py": "14494099cb54aa3a6e1a3347486f4347315360aabb71bb6b0a9c1bd83869da5c",
+  "ui_renderer.py": "188f79c5538bf7feef1bf21a28044416626ec2ea963ab46c537c6c354cf11135",
+  "weather_service.py": "c1bf42487e8c65302b8effa9e1a72dd5dde9ec5401b77d41c56c6e982f44afaf",
+  "wonder_engine.py": "4fae3e61497651beb36c4b11aff2a20b437021d01e225ab9b14c07555542c3fc"
+ },
+ "version": "6ca2360"
+}
