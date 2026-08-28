@@ -61,8 +61,36 @@ def _get(url, timeout=25):
         r.close()
 
 
+def _cleanup_staging(log=lambda m: None):
+    """Remove orphaned .new files from an interrupted apply."""
+    n = 0
+    for d in ("/flash", "/flash/scenes/v3", "/flash/scenes/special"):
+        try:
+            names = os.listdir(d)
+        except OSError:
+            continue
+        for name in names:
+            if name.endswith(".new"):
+                try:
+                    os.remove(d + "/" + name)
+                    n += 1
+                except OSError:
+                    pass
+    if n:
+        log("OTA: cleaned %d stale staged files" % n)
+
+
+def _local_sha(path):
+    try:
+        with open(path, "rb") as f:
+            return _sha256(f.read())
+    except OSError:
+        return None
+
+
 def check_and_apply(log=lambda m: None):
     """Returns True if an update was installed (caller should reset)."""
+    _cleanup_staging(log)
     manifest = json.loads(_get(MANIFEST_URL))
     version = manifest["version"]
     if version == installed_version():
@@ -77,6 +105,9 @@ def check_and_apply(log=lambda m: None):
         name = path.rsplit("/", 1)[-1]
         if name in NEVER:
             continue
+        dest_probe = "/flash/" + manifest.get("dest", {}).get(path, path)
+        if _local_sha(dest_probe) == sha:
+            continue                 # already current: skip download
         data = _get(RAW + path)
         if _sha256(data) != sha:
             raise ValueError("OTA hash mismatch: %s" % path)
@@ -86,6 +117,12 @@ def check_and_apply(log=lambda m: None):
             f.write(data)
         staged.append(dest)
     log("OTA: %d files staged and verified" % len(staged))
+    if not staged:
+        # everything already matched (e.g. a manual sync got here
+        # first); just record the version
+        with open(VERSION_FILE, "w") as f:
+            f.write(version)
+        return False
 
     # Swap in; main.py last so a power cut mid-swap leaves a bootable
     # mix of old main + new modules rather than a half-written main.
