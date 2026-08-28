@@ -12,6 +12,7 @@ import time
 
 import config
 import adventures
+import events
 import weather_service
 import scoring_engine
 import recommendation_engine
@@ -93,6 +94,25 @@ def connect_wifi():
             return
         time.sleep(1)
     raise OSError("WiFi connect failed")
+
+
+def _maybe_ota():
+    """Self-update from GitHub when power allows. An applied update
+    resets the device; the next boot runs the new code."""
+    if not MICROPYTHON:
+        return
+    b = battery_info()
+    if b and not b["charging"] and b["pct"] < 30:
+        return                      # not on a weak battery
+    try:
+        import ota
+        if ota.check_and_apply(log_wake):
+            wifi_off()
+            import machine
+            log_wake("OTA applied; resetting")
+            machine.reset()
+    except Exception as e:
+        log_wake("OTA check failed: %r" % (e,))
 
 
 def wifi_off():
@@ -208,6 +228,7 @@ def update_display(ctx=None, force=False, night_watch=False):
     if ctx is None:
         connect_wifi()
         sync_clock()
+        _maybe_ota()
         ctx = weather_service.build_context()
     if night_watch:
         ctx["is_night_watch"] = True
@@ -220,6 +241,10 @@ def update_display(ctx=None, force=False, night_watch=False):
     ctx["score"] = score
     head = scoring_engine.headline(ctx, score)
     wonder_text = wonder_engine.wonder(ctx)
+    if not ctx.get("is_night_watch"):
+        ev = events.today(ctx)
+        if ev:
+            wonder_text = ev        # a worthy day outranks the weather
     ctx["adventure"] = adventures.today(ctx)
     activities = recommendation_engine.recommend(
         ctx, avoid=" ".join((head, wonder_text, ctx["adventure"] or "")))
@@ -413,6 +438,30 @@ def run_forever():
                     config.CRITICAL_SLEEP_MINUTES * 60)
                 scheduler.sleep_for(
                     config.CRITICAL_SLEEP_MINUTES * 60)
+                continue
+
+            # Docked and charging: show the Wave as a splash screen.
+            # Power is free, so this is also the ideal OTA moment.
+            if b and b["charging"]:
+                try:
+                    connect_wifi()
+                    sync_clock()
+                    _maybe_ota()
+                except Exception as e:
+                    log_wake("charging net: %r" % (e,))
+                wifi_off()
+                state = weather_service._load_json(
+                    config.STATE_FILE) or {}
+                if state.get("last_render") != "SPLASH":
+                    ui_renderer.render_splash()
+                    state["last_render"] = "SPLASH"
+                    weather_service._save_json(config.STATE_FILE, state)
+                    log_wake("charging: splash shown")
+                else:
+                    log_wake("charging: splash already up")
+                button_wake = False
+                scheduler.note_expected_wake(3600)
+                scheduler.sleep_for(3600)
                 continue
 
             source = establish_time()

@@ -237,6 +237,40 @@ class TestSevereWeather(unittest.TestCase):
                       + wonder_engine.wonder(c))
 
 
+import events
+
+
+class TestEvents(unittest.TestCase):
+    def test_state_fair_window(self):
+        self.assertIn("Fair", events.today(ctx(month=8, day=28)))
+        self.assertIn("Fair", events.today(ctx(month=9, day=7)))   # spans month
+        self.assertIsNone(events.today(ctx(month=9, day=9)))
+
+    def test_year_bound_one_shot(self):
+        self.assertIsNotNone(events.today(ctx(year=2026, month=8, day=12)))
+        got = events.today(ctx(year=2027, month=8, day=12))
+        # 2027: the eclipse one-shot must NOT fire; perseids still may
+        self.assertNotEqual(got, "A total solar eclipse crosses Spain today.")
+
+    def test_custom_outranks_local(self):
+        events.CUSTOM.append({"month": 8, "day": 28, "name": "t",
+                              "message": "CUSTOM WINS"})
+        try:
+            self.assertEqual(events.today(ctx(month=8, day=28)),
+                             "CUSTOM WINS")
+        finally:
+            events.CUSTOM.pop()
+
+    def test_event_takes_over_wonder_line(self):
+        c = ctx(month=8, day=28)
+        r = main.update_display(c, force=True)
+        self.assertIn("Fair", r[4])
+        import os
+        for f in ("state.json",):
+            if os.path.exists(f):
+                os.remove(f)
+
+
 class TestBattery(unittest.TestCase):
     def test_desktop_returns_placeholder(self):
         self.assertIsNone(main.battery_info())
