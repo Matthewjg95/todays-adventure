@@ -108,6 +108,12 @@ def _maybe_ota():
         import ota
         if ota.check_and_apply(log_wake):
             wifi_off()
+            # force a repaint after the reset: new code may render
+            # differently, and a stale SPLASH/fingerprint marker
+            # would skip the redraw
+            state = weather_service._load_json(config.STATE_FILE) or {}
+            state["last_render"] = None
+            weather_service._save_json(config.STATE_FILE, state)
             import machine
             log_wake("OTA applied; resetting")
             machine.reset()
