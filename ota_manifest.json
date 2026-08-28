@@ -2,7 +2,7 @@
  "files": {
   "adventures.py": "bdc4478d4f6743b156835e48ce2bacd371f6c0ad7460d51d0652d854734dac12",
   "artwork.py": "c2fe7f959d7e1d3c71a5e5a25f908e09cb3b60c84eba1a145e5b64e01ca3915b",
-  "config.py": "224b256ef263f1b4e494059a5187e091b73284da2d4f72ccaa1ccdb13b6178a3",
+  "config.py": "589962fa56feefb17948565846b556fb1986f088117e0c4c358e7a1e78a1aeba",
   "events.py": "b7fa4339dbafc6c022aa05f7cd458949808a010c45c164c076f5117e42eb0a65",
   "main.py": "2c850c028a37fe923012f62cfdc044c2134f1e20c0d629a15b2f34dd2d833c80",
   "ota.py": "4b21f98e63a672e3f8b1c579df86fed745e9076f8b79d4c70f8586d324db019e",
@@ -26,5 +26,5 @@
   "weather_service.py": "c1bf42487e8c65302b8effa9e1a72dd5dde9ec5401b77d41c56c6e982f44afaf",
   "wonder_engine.py": "4fae3e61497651beb36c4b11aff2a20b437021d01e225ab9b14c07555542c3fc"
  },
- "version": "6d51948"
+ "version": "9cdf85b"
 }
