@@ -5,7 +5,7 @@
   "config.py": "224b256ef263f1b4e494059a5187e091b73284da2d4f72ccaa1ccdb13b6178a3",
   "events.py": "b7fa4339dbafc6c022aa05f7cd458949808a010c45c164c076f5117e42eb0a65",
   "main.py": "2c850c028a37fe923012f62cfdc044c2134f1e20c0d629a15b2f34dd2d833c80",
-  "ota.py": "6104eb3dc0f67ef200f91c58e90cc72919b7b014151ae0422ee334cb2ec8b271",
+  "ota.py": "4b21f98e63a672e3f8b1c579df86fed745e9076f8b79d4c70f8586d324db019e",
   "recommendation_engine.py": "8831f1a4f58a53a3cd001c7eb1af9fca0c086c7d649faf33af9bd6c164a072e4",
   "scenes/special/samurai.png": "7ce6deabf422deb2f58f480a3d705f10459ee59ac9f02872102f06897350b1ab",
   "scenes/special/wave_faithful.png": "bfec7f953c074d6862c115253a9830cb10a5a5e0b1e26d96e288042cd72cbc63",
@@ -26,5 +26,5 @@
   "weather_service.py": "c1bf42487e8c65302b8effa9e1a72dd5dde9ec5401b77d41c56c6e982f44afaf",
   "wonder_engine.py": "4fae3e61497651beb36c4b11aff2a20b437021d01e225ab9b14c07555542c3fc"
  },
- "version": "b38033d"
+ "version": "6d51948"
 }
