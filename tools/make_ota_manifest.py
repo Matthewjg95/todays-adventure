@@ -46,7 +46,12 @@ def main():
         if not os.path.exists(p):
             print("  skip (missing):", rel)
             continue
-        data = open(p, "rb").read()
+        # Hash the COMMITTED bytes (what raw.githubusercontent
+        # serves), not the working tree: Windows CRLF on disk vs LF
+        # in git made the device reject config.py with a mismatch.
+        data = subprocess.check_output(
+            ["git", "show", "HEAD:" + rel.replace("\\", "/")],
+            cwd=ROOT)
         files[rel] = hashlib.sha256(data).hexdigest()
         if dev != rel:
             dest[rel] = dev
