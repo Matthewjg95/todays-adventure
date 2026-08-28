@@ -655,11 +655,14 @@ def render_splash():
         cv.draw_png(SCENES_DIR + "/special/wave_faithful.png", 0, 0)
     except Exception:
         pass
-    title = "TODAY'S ADVENTURE"
-    tw = cv.text_width(title, 40)
-    x0 = max(108, (W - tw) // 2)    # clear of the wave's cartouche
+    # Two lines, right-aligned with a hard margin: the device font
+    # runs wider than the desktop estimate and one line clipped the
+    # final E off the panel edge. The right side also clears the
+    # wave's cartouche (top-left).
     cv.ink("black")
-    cv.text3d(x0, 48, title, 40, depth=3)
+    for i, word in enumerate(("TODAY'S", "ADVENTURE")):
+        tw = cv.text_width(word, 40)
+        cv.text3d(W - 24 - tw, 40 + i * 54, word, 40, depth=3)
     cv.show()
 
 
