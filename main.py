@@ -23,13 +23,38 @@ import scheduler
 MICROPYTHON = weather_service.MICROPYTHON
 
 
-def battery_info():
-    """{'pct', 'mv', 'charging'} or None.
+def _charging_from(mv, prev_mv):
+    """Charging detection from cell voltage + trend.
 
-    The gauge is a voltmeter, not a fuel gauge: while charging it
-    reads the charger's ~4.2V and reports ~100% regardless of true
-    charge. Only on-battery readings mean anything — so log raw
-    millivolts and flag charging readings as untrustworthy."""
+    isCharging() lies and getVBUSVoltage() is unimplemented (-1) on
+    this board, so the cell itself is the only witness. Voltage alone
+    is ambiguous: a freshly-unplugged full cell RESTS at 4150-4200mV
+    for hours (which kept the charging splash up after unplugging).
+    A charger either holds the cell clearly high (>=4230) or drives
+    it upward; a resting cell sags. When ambiguous, say battery —
+    the weather screen is the useful default."""
+    if mv is None:
+        return None
+    if mv >= 4230:
+        return True
+    if mv >= 4150:
+        if prev_mv is None:
+            return True             # no history yet: old behavior
+        return mv > prev_mv + 1     # rising = charger at work
+    return False
+
+
+_BATT_CACHE = None
+_BATT_MV_FILE = "batt_mv.txt"
+
+
+def battery_info():
+    """{'pct', 'mv', 'charging'} or None. Computed once per boot
+    (multiple callers per wake must see one consistent reading and
+    the mv-trend file must be written exactly once)."""
+    global _BATT_CACHE
+    if _BATT_CACHE is not None:
+        return _BATT_CACHE
     if not MICROPYTHON:
         return None
     try:
@@ -44,14 +69,20 @@ def battery_info():
             info["mv"] = int(M5.Power.getBatteryVoltage())
         except Exception:
             pass
-        # Charging detection, the hard way. isCharging() lies (returns
-        # True on battery) and getVBUSVoltage() returns -1 on this
-        # board — unimplemented. What does not lie is the cell itself:
-        # under load a 1S li-ion cannot sit above ~4.15V unless a
-        # charger is holding it there. Measured: battery max ever
-        # logged 3718mV; plugged readings 4184-4274mV.
+        prev = None
+        try:
+            with open(_BATT_MV_FILE) as f:
+                prev = int(f.read().strip())
+        except Exception:
+            pass
         if info["mv"]:
-            info["charging"] = info["mv"] >= 4150
+            try:
+                with open(_BATT_MV_FILE, "w") as f:
+                    f.write(str(info["mv"]))
+            except Exception:
+                pass
+        info["charging"] = _charging_from(info["mv"], prev)
+        _BATT_CACHE = info
         return info
     except Exception:
         return None

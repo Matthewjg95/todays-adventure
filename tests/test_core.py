@@ -300,6 +300,17 @@ class TestBattery(unittest.TestCase):
         self.assertIsNone(main.battery_info())
         self.assertEqual(main.battery_log_str(), "?")
 
+    def test_charging_heuristic(self):
+        cf = main._charging_from
+        self.assertTrue(cf(4270, 4270))    # charger holding it high
+        self.assertTrue(cf(4160, 4140))    # rising = charger at work
+        self.assertFalse(cf(4190, 4192))   # full cell resting: sagging
+        self.assertFalse(cf(4180, 4180))   # stable but not held high
+        self.assertFalse(cf(4132, 4100))   # below band = battery
+        self.assertTrue(cf(4180, None))    # no history: old behavior
+        self.assertFalse(cf(3690, 3700))
+        self.assertIsNone(cf(None, None))
+
     def test_charging_string(self):
         b = {"pct": 100, "mv": 4270, "charging": True}
         self.assertEqual(main.battery_log_str(b), "chg 4270mV")
