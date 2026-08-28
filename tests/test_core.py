@@ -237,6 +237,30 @@ class TestSevereWeather(unittest.TestCase):
                       + wonder_engine.wonder(c))
 
 
+import ui_renderer
+
+
+class TestRenderPaths(unittest.TestCase):
+    """Smoke tests: every render path must complete on the desktop
+    canvas. The flashcard once shipped broken because nothing here
+    exercised it."""
+
+    def test_main_render(self):
+        cv = ui_renderer.make_canvas()
+        ui_renderer.render(cv, ctx(), "HEADLINE", ["a", "b"], "wonder")
+
+    def test_flashcard(self):
+        cv = ui_renderer.make_canvas()
+        ui_renderer.render_facts(cv, ctx())
+
+    def test_splash(self):
+        ui_renderer.render_splash()
+
+    def test_night_watch_render(self):
+        cv = ui_renderer.make_canvas()
+        ui_renderer.render(cv, ctx(is_night_watch=True), "H", ["a"], "w")
+
+
 import events
 
 

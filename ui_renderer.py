@@ -636,6 +636,9 @@ def _upd_stamp(cv, ctx):
 
 
 
+_DAYS_IN_MONTH = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+
+
 def _day_of_year(ctx):
     leap = ctx["year"] % 4 == 0 and (ctx["year"] % 100 != 0
                                      or ctx["year"] % 400 == 0)
