@@ -487,15 +487,17 @@ def run_forever():
                 except Exception as e:
                     log_wake("charging net: %r" % (e,))
                 wifi_off()
+                # Repaint EVERY docked wake: the panel fades during
+                # rail-cut sleep, so a render-once splash turns into a
+                # blank screen within the hour ("blank for a long
+                # time" while docked). One flash per hour, same as
+                # weather mode.
                 state = weather_service._load_json(
                     config.STATE_FILE) or {}
-                if state.get("last_render") != "SPLASH":
-                    ui_renderer.render_splash()
-                    state["last_render"] = "SPLASH"
-                    weather_service._save_json(config.STATE_FILE, state)
-                    log_wake("charging: splash shown")
-                else:
-                    log_wake("charging: splash already up")
+                ui_renderer.render_splash()
+                state["last_render"] = "SPLASH"
+                weather_service._save_json(config.STATE_FILE, state)
+                log_wake("charging: splash refreshed")
                 button_wake = False
                 scheduler.note_expected_wake(3600)
                 scheduler.sleep_for(3600)

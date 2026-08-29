@@ -589,6 +589,9 @@ def render(cv, ctx, headline_text, activities, wonder_text):
         y_adv = y + 40
         asz = S(24)
         tw = cv.text_width(adv, asz)
+        if tw + 34 > W:              # long names ("Labrador Hollow
+            asz = 24                 # boardwalk") clipped at 40pt
+            tw = cv.text_width(adv, asz)
         x0 = (W - (tw + 28)) // 2
         cv.ink("black")
         mx0 = x0 + 7
