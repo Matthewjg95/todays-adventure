@@ -240,6 +240,22 @@ def log_wake(msg):
         pass
 
 
+STAGE_FILE = "stage.txt"
+
+
+def _stage(name):
+    """Breadcrumb for the watchdog. A hung wake ends in a silent
+    4-min WDT reset; the next boot logs the last stage reached so
+    the log says WHERE it hung, not just that it did."""
+    if not MICROPYTHON:
+        return
+    try:
+        with open(STAGE_FILE, "w") as f:
+            f.write(name)
+    except Exception:
+        pass
+
+
 def os_size(path):
     import os
     return os.stat(path)[6]
@@ -263,9 +279,13 @@ def _fingerprint(ctx, head, activities, wonder_text):
 
 def update_display(ctx=None, force=False, night_watch=False):
     if ctx is None:
+        _stage("wifi")
         connect_wifi()
+        _stage("ntp")
         sync_clock()
+        _stage("ota")
         _maybe_ota()
+        _stage("fetch")
         ctx = weather_service.build_context()
     if night_watch:
         ctx["is_night_watch"] = True
@@ -304,6 +324,7 @@ def update_display(ctx=None, force=False, night_watch=False):
         return ctx, score, head, activities, wonder_text
     state["last_render"] = fp
 
+    _stage("render")
     cv = ui_renderer.make_canvas()
     ui_renderer.render(cv, ctx, head, activities, wonder_text)
     weather_service._save_json(config.STATE_FILE, state)
@@ -448,9 +469,16 @@ def run_forever():
     # cause, quiet hours and night watch are all decided from it.
     boot_source = establish_time()
     button_wake = MICROPYTHON and not scheduler.woke_by_timer()
-    log_wake("boot (%s) [%s, clock=%s, batt=%s]"
+    hung = ""
+    if "WATCHDOG" in scheduler.WAKE_DETAIL or "WDT" in scheduler.WAKE_DETAIL:
+        try:
+            with open(STAGE_FILE) as f:
+                hung = ", hung at " + f.read().strip()
+        except Exception:
+            pass
+    log_wake("boot (%s) [%s%s, clock=%s, batt=%s]"
              % ("button" if button_wake else "timer",
-                scheduler.WAKE_DETAIL, boot_source,
+                scheduler.WAKE_DETAIL, hung, boot_source,
                 battery_log_str()))
     print("wake:", "button" if button_wake else "timer",
           scheduler.WAKE_DETAIL)
@@ -481,12 +509,16 @@ def run_forever():
             # Power is free, so this is also the ideal OTA moment.
             if b and b["charging"]:
                 try:
+                    _stage("wifi")
                     connect_wifi()
+                    _stage("ntp")
                     sync_clock()
+                    _stage("ota")
                     _maybe_ota()
                 except Exception as e:
                     log_wake("charging net: %r" % (e,))
                 wifi_off()
+                _stage("splash")
                 # Repaint EVERY docked wake: the panel fades during
                 # rail-cut sleep, so a render-once splash turns into a
                 # blank screen within the hour ("blank for a long
@@ -537,6 +569,7 @@ def run_forever():
             print("update failed:", e)
             log_wake("FAILED: %r" % (e,))
         button_wake = False
+        _stage("sleep")
         secs = scheduler.seconds_until_next_update()
         log_wake("sleeping %ds" % secs)
         scheduler.note_expected_wake(secs)
