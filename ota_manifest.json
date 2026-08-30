@@ -2,9 +2,9 @@
  "files": {
   "adventures.py": "bdc4478d4f6743b156835e48ce2bacd371f6c0ad7460d51d0652d854734dac12",
   "artwork.py": "c2fe7f959d7e1d3c71a5e5a25f908e09cb3b60c84eba1a145e5b64e01ca3915b",
-  "config.py": "589962fa56feefb17948565846b556fb1986f088117e0c4c358e7a1e78a1aeba",
+  "config.py": "85b29185cc835cc4bd3687324a2caf14b0f5fa893488449ffce034b50d3d3b62",
   "events.py": "b7fa4339dbafc6c022aa05f7cd458949808a010c45c164c076f5117e42eb0a65",
-  "main.py": "151decf229850c1d2c3c47dd0ebd926b41bf3dc768413dcd92c1cbe702e11d9f",
+  "main.py": "f41baaa9401e9df7d7ca3d3791c0b84e05d7da44ffe6134e2ed8d3eedbecbd6c",
   "ota.py": "4b21f98e63a672e3f8b1c579df86fed745e9076f8b79d4c70f8586d324db019e",
   "recommendation_engine.py": "8831f1a4f58a53a3cd001c7eb1af9fca0c086c7d649faf33af9bd6c164a072e4",
   "scenes/special/samurai.png": "7ce6deabf422deb2f58f480a3d705f10459ee59ac9f02872102f06897350b1ab",
@@ -26,5 +26,5 @@
   "weather_service.py": "c1bf42487e8c65302b8effa9e1a72dd5dde9ec5401b77d41c56c6e982f44afaf",
   "wonder_engine.py": "4fae3e61497651beb36c4b11aff2a20b437021d01e225ab9b14c07555542c3fc"
  },
- "version": "332729b"
+ "version": "80b4bd4"
 }
