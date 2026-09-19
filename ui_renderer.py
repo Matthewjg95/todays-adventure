@@ -584,10 +584,13 @@ def render(cv, ctx, headline_text, activities, wonder_text):
     cv.line(W // 3, y + 8, 2 * W // 3, y + 8)
 
     # --- The daily adventure: today's actual plan ------------------------
+    bottom = 832 if S(18) != 18 else 808
     adv = ctx.get("adventure")
     if adv and not night_watch:
         y_adv = y + 40
         asz = S(24)
+        if activities and y_adv + asz + 18 + (len(activities) - 1) * 32 + 24 > bottom:
+            asz = 24                # leave room for the compact list below
         tw = cv.text_width(adv, asz)
         if tw + 34 > W:              # long names ("Labrador Hollow
             asz = 24                 # boardwalk") clipped at 40pt
@@ -602,7 +605,9 @@ def render(cv, ctx, headline_text, activities, wonder_text):
                                  (mx0 - 7, my0, mx0, my0 - 7)):
             cv.line(a1, b1, a2, b2)
         cv.text(x0 + 28, y_adv, adv, asz)
-        y = y_adv + 14
+        # Reserve the whole adventure line before spacing suggestions.
+        # A fixed 14px advance made the first suggestion overlap 40pt text.
+        y = y_adv + asz
 
     # --- Gentle suggestions, dotted -------------------------------------
     asize = S(24)
@@ -610,6 +615,11 @@ def render(cv, ctx, headline_text, activities, wonder_text):
     if y > 770:
         asize = 24                      # crowded screen: keep them small
     step = asize + (24 if asize == 24 else 8)
+    # Long wonders can push the list down; keep its last line above
+    # the sun/moon region instead of merely checking the first row.
+    if activities and y + (len(activities) - 1) * step + asize > bottom:
+        asize = 24
+        step = 32
     for act in activities:
         tw = cv.text_width(act, asize)
         x0 = (W - (tw + 22)) // 2
@@ -725,5 +735,3 @@ def render_facts(cv, ctx):
     _upd_stamp(cv, ctx)
 
     cv.show()
-
-
