@@ -275,8 +275,8 @@ def _peripherals_off():
 
 def sleep_until_next_update():
     secs = seconds_until_next_update()
-    # keep a sane range: at least 1 min, at most the full interval
-    secs = max(60, min(secs, config.UPDATE_INTERVAL_MINUTES * 60))
+    # Preserve the rollover correction instead of clamping it back to an hour.
+    secs = max(60, secs)
     sleep_for(secs)
 
 

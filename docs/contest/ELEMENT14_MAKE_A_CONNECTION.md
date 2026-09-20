@@ -4,6 +4,11 @@ Status: **ACTIVE ENTRY TARGET**
 Project: **Today's Adventure**
 Submission deadline: **September 27, 2026 at 23:59 UK time**
 
+September 18 update: see [the prepared contest package](PACKAGE.md),
+[article draft](PROJECT_BLOG.md) and [current status](../STATUS.md).
+The deadline is 18:59 Eastern. Physical video and current device validation
+remain outstanding; the original planning checklist below is historical.
+
 ## Why Today's Adventure fits
 
 The competition asks for an electronics project that **sends a message or signal**. Today's Adventure fits naturally without changing the project: it connects to online weather/context data, turns that data into a human-centered daily message, and communicates it through an ambient e-ink display.
@@ -41,7 +46,7 @@ The interesting engineering is the translation layer between raw data and the fi
 
 - fetch only what is needed
 - survive network and deep-sleep failures
-- avoid unnecessary e-ink refreshes
+- explain the reliability tradeoff of repainting every normal update after field fading
 - keep battery use low
 - turn measurements into context rather than dumping data
 - present one quiet, understandable message instead of another dashboard
@@ -51,7 +56,7 @@ The interesting engineering is the translation layer between raw data and the fi
 1. **Problem / intent** — most connected displays show more data; this one tries to make the connection meaningful.
 2. **Hardware** — M5Stack M5Paper v1.1, battery/power behavior, Wi-Fi connection.
 3. **Signal path** — Open-Meteo/context input → scoring/recommendation/wonder logic → final e-ink message.
-4. **Reliability work** — deep sleep, hardware watchdog, fetch timeouts, wake logging, battery guards, change fingerprinting.
+4. **Reliability work** — deep sleep, hardware watchdog, fetch timeouts, wake logging, battery guards, and the current repaint mitigation (unchanged-frame skipping is disabled).
 5. **Display design** — scene art, headline, wonder sentence, suggestions, sun/moon context, flashcard mode.
 6. **Evidence** — photos/video of the physical unit updating, examples across different weather/time conditions, desktop/demo tooling if useful.
 7. **Build instructions** — setup, configuration, deployment, scene generation, and how to reproduce it.

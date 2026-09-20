@@ -2,7 +2,7 @@
 
 Run before committing device-facing changes:
     python tools/make_ota_manifest.py
-The version is the short git hash of HEAD plus staged-tree awareness:
+The version is the short git hash of committed HEAD:
 commit first, then run this, then commit the manifest (the release
 commit). Files listed are exactly what lives on /flash.
 """
@@ -28,6 +28,7 @@ DEVICE_FILES = {
     "events.py": "events.py",
     "artwork.py": "artwork.py",
     "ota.py": "ota.py",
+    "wake_plan.py": "wake_plan.py",
 }
 SCENE_DIRS = ("scenes/v3", "scenes/special")
 

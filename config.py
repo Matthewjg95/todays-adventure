@@ -66,3 +66,18 @@ WEATHER_URL = (
 # --- Files ----------------------------------------------------------------
 STATE_FILE = "state.json"       # remembers things like "did it snow yet this year"
 CACHE_FILE = "last_weather.json"
+
+# OTA-excluded user preferences. No auto mode: charging inference is not VBUS.
+POWER_MODE = "fridge"           # five daylight + two night updates
+PLUGGED_INTERVAL_MINUTES = 60   # used only with an explicit plugged preference
+try:
+    import json as _json
+    with open("user_settings.json") as _f:
+        _prefs = _json.load(_f)
+    if _prefs.get("power_mode") in ("fridge", "plugged"):
+        POWER_MODE = _prefs["power_mode"]
+    _interval = _prefs.get("plugged_interval_minutes", 60)
+    if isinstance(_interval, int) and _interval in (30, 60, 120, 180, 240):
+        PLUGGED_INTERVAL_MINUTES = _interval
+except (OSError, ValueError, TypeError, AttributeError):
+    pass

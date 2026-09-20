@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1000" viewBox="0 0 1200 1000" role="img" aria-label="Today’s Adventure signal flow">
+<rect width="1200" height="1000" fill="#f8f6ef"/>
+<g font-family="Arial, sans-serif" fill="#16352d">
+<text x="70" y="94" font-size="44" font-weight="bold">Today’s Adventure</text>
+<text x="70" y="136" font-size="25" fill="#455b53">From an environmental signal to a human message</text>
+<rect x="70" y="180" width="1060" height="112" rx="18" fill="white" stroke="#97aaa1" stroke-width="2"/>
+<circle cx="121" cy="236" r="26" fill="#16352d"/>
+<text x="121" y="245" text-anchor="middle" fill="white" font-size="27" font-weight="bold">1</text>
+<text x="175" y="223" font-size="29" font-weight="bold">Receive</text>
+<text x="175" y="267" font-size="25" fill="#455b53">Open-Meteo weather + clock + seasonal context</text>
+<path d="M600 296 v24 m-7 -6 l7 9 l7 -9" stroke="#16352d" stroke-width="3" fill="none"/>
+<rect x="70" y="330" width="1060" height="112" rx="18" fill="white" stroke="#97aaa1" stroke-width="2"/>
+<circle cx="121" cy="386" r="26" fill="#16352d"/>
+<text x="121" y="395" text-anchor="middle" fill="white" font-size="27" font-weight="bold">2</text>
+<text x="175" y="373" font-size="29" font-weight="bold">Understand</text>
+<text x="175" y="417" font-size="25" fill="#455b53">Build one shared day-context dictionary</text>
+<path d="M600 446 v24 m-7 -6 l7 9 l7 -9" stroke="#16352d" stroke-width="3" fill="none"/>
+<rect x="70" y="480" width="1060" height="112" rx="18" fill="white" stroke="#97aaa1" stroke-width="2"/>
+<circle cx="121" cy="536" r="26" fill="#16352d"/>
+<text x="121" y="545" text-anchor="middle" fill="white" font-size="27" font-weight="bold">3</text>
+<text x="175" y="523" font-size="29" font-weight="bold">Choose</text>
+<text x="175" y="567" font-size="25" fill="#455b53">Headline + wonder + local outing + suggestions</text>
+<path d="M600 596 v24 m-7 -6 l7 9 l7 -9" stroke="#16352d" stroke-width="3" fill="none"/>
+<rect x="70" y="630" width="1060" height="112" rx="18" fill="white" stroke="#97aaa1" stroke-width="2"/>
+<circle cx="121" cy="686" r="26" fill="#16352d"/>
+<text x="121" y="695" text-anchor="middle" fill="white" font-size="27" font-weight="bold">4</text>
+<text x="175" y="673" font-size="29" font-weight="bold">Display</text>
+<text x="175" y="717" font-size="25" fill="#455b53">Compose one frame and refresh the M5Paper</text>
+<path d="M600 746 v24 m-7 -6 l7 9 l7 -9" stroke="#16352d" stroke-width="3" fill="none"/>
+<rect x="70" y="780" width="1060" height="112" rx="18" fill="white" stroke="#97aaa1" stroke-width="2"/>
+<circle cx="121" cy="836" r="26" fill="#16352d"/>
+<text x="121" y="845" text-anchor="middle" fill="white" font-size="27" font-weight="bold">5</text>
+<text x="175" y="823" font-size="29" font-weight="bold">Connect</text>
+<text x="175" y="867" font-size="25" fill="#455b53">A person notices a reason to enjoy today</text>
+<text x="70" y="971" font-size="21" fill="#455b53">Network input · local rules · ambient e-ink output</text>
+</g></svg>

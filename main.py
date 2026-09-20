@@ -277,14 +277,12 @@ def _fingerprint(ctx, head, activities, wonder_text):
     ))
 
 
-def update_display(ctx=None, force=False, night_watch=False):
+def update_display(ctx=None, force=False, night_watch=False, keep_wifi=False):
     if ctx is None:
         _stage("wifi")
         connect_wifi()
         _stage("ntp")
         sync_clock()
-        _stage("ota")
-        _maybe_ota()
         _stage("fetch")
         ctx = weather_service.build_context()
     if night_watch:
@@ -332,7 +330,8 @@ def update_display(ctx=None, force=False, night_watch=False):
           % (head, ", ".join(activities), wonder_text))
 
     # Network work is done; drop the radio before the slow part.
-    wifi_off()
+    if not keep_wifi:
+        wifi_off()
 
     # A few seconds of glyph motion — rain falls, rays breathe.
     # Skipped on a low battery: it is the single longest awake stretch.
@@ -444,6 +443,100 @@ def _seconds_to_next_night_event(hour):
     return max(600, min(secs, 4 * 3600))
 
 
+
+SCHEDULE_STATE = "schedule_state.json"
+
+
+def _save_schedule(state):
+    """Persist before expensive work so a reset cannot repeat a slot."""
+    import json
+    import os
+    temporary = SCHEDULE_STATE + ".tmp"
+    with open(temporary, "w") as f:
+        json.dump(state, f)
+    replace = getattr(os, "replace", os.rename)
+    replace(temporary, SCHEDULE_STATE)
+
+
+def _sleep_to(target, label):
+    """One computed duration for telemetry, intent, and actual hardware sleep."""
+    secs = max(60, int(target - time.time()))
+    wifi_off()
+    _stage("sleep")
+    log_wake("sleep target=%d slot=%s seconds=%d" % (target, label, secs))
+    scheduler.note_expected_wake(secs)
+    scheduler.sleep_for(secs)
+
+
+def _critical(b):
+    # A noisy charging heuristic must not override a critically low cell.
+    return bool(b and b["pct"] <= getattr(config, "CRITICAL_BATTERY_PCT", 8))
+
+
+def scheduled_cycle(button_wake=False):
+    import wake_plan
+    now = time.time()
+    b = battery_info()
+    if _critical(b):
+        log_wake("CRITICAL battery %s; skipping radio/render" % battery_log_str(b))
+        _sleep_to(now + config.CRITICAL_SLEEP_MINUTES * 60, "critical")
+        return
+    if time.gmtime(now)[0] < 2024:
+        log_wake("clock unknown; deferring scheduled work")
+        _sleep_to(now + 4 * 3600, "clock-recovery")
+        return
+    raw = weather_service._load_json(config.CACHE_FILE) or {}
+    state = weather_service._load_json(SCHEDULE_STATE) or {}
+    if not isinstance(state, dict):
+        state = {}
+    attempted = state.get("attempted", [])
+    if not isinstance(attempted, list):
+        attempted = []
+    mode = getattr(config, "POWER_MODE", "fridge")
+    # Explicit plugged preference is not evidence that external power is present.
+    if b and b["pct"] < 30:
+        mode = "fridge"
+    interval = getattr(config, "PLUGGED_INTERVAL_MINUTES", 60)
+    due, future = wake_plan.choose(now, raw, mode, interval, attempted)
+    try:
+        if due:
+            slot, target, night = due
+            state["attempted"] = (attempted + [slot])[-64:]
+            state["last"] = {"slot": slot, "target": target, "status": "attempted"}
+            _save_schedule(state)
+            started = time.time()
+            log_wake("slot=%s mode=%s drift=%ds batt=%s" %
+                     (slot, mode, int(now - target), battery_log_str(b)))
+            update_display(force=True, night_watch=night, keep_wifi=True)
+            state["last"]["status"] = "completed"
+            _save_schedule(state)
+            log_wake("slot=%s completed duration=%ds" %
+                     (slot, int(time.time() - started)))
+            # Already connected. Claim/completion survives the OTA reset.
+            _stage("ota")
+            _maybe_ota()
+        elif button_wake:
+            # Restore the normal screen from cache after the facts card.
+            if raw:
+                ctx = weather_service.build_context(raw=raw)
+                update_display(ctx, force=True, night_watch=is_quiet_hour(local_hour()))
+        else:
+            log_wake("no unattempted slot; skipping network and render")
+    except Exception as e:
+        log_wake("FAILED slot=%s: %r" % (due[0] if due else "manual", e))
+        if due:
+            state["last"]["status"] = "failed"
+            try:
+                _save_schedule(state)
+            except Exception:
+                pass
+    # A fetch may update solar times/UTC offset. Re-plan once; no polling boots.
+    raw = weather_service._load_json(config.CACHE_FILE) or raw
+    _, future = wake_plan.choose(time.time(), raw, mode, interval,
+                                 state.get("attempted", attempted))
+    _sleep_to(future[1], future[0])
+
+
 def run_forever():
     # Hardware watchdog: if ANYTHING hangs (a dead socket, a wedged
     # panel), the chip resets and the next boot recovers. Deep sleep
@@ -465,8 +558,11 @@ def run_forever():
         except Exception:
             pass
 
-    # Clock first: every battery wake is a cold boot, and the wake
-    # cause, quiet hours and night watch are all decided from it.
+    # Protect a depleted cell before clock recovery can enable Wi-Fi.
+    if _critical(battery_info()):
+        log_wake("CRITICAL battery at boot; deferring clock/network")
+        _sleep_to(time.time() + config.CRITICAL_SLEEP_MINUTES * 60, "critical")
+        return
     boot_source = establish_time()
     button_wake = MICROPYTHON and not scheduler.woke_by_timer()
     hung = ""
@@ -474,106 +570,18 @@ def run_forever():
         try:
             with open(STAGE_FILE) as f:
                 hung = ", hung at " + f.read().strip()
-        except Exception:
+        except OSError:
             pass
-    log_wake("boot (%s) [%s%s, clock=%s, batt=%s]"
-             % ("button" if button_wake else "timer",
-                scheduler.WAKE_DETAIL, hung, boot_source,
-                battery_log_str()))
-    print("wake:", "button" if button_wake else "timer",
-          scheduler.WAKE_DETAIL)
+    log_wake("boot (%s) [%s%s, clock=%s, batt=%s]" %
+             ("button" if button_wake else "timer", scheduler.WAKE_DETAIL,
+              hung, boot_source, battery_log_str()))
     if button_wake:
         show_flashcard()
     while True:
         if wdt:
             wdt.feed()
-        try:
-            # Critical battery: do NOT touch the radio. The device
-            # died on 2026-08-18 because the 5 AM update hung at 0%,
-            # the watchdog retried, and the WiFi burst collapsed the
-            # rail to 2848mV. Coast on the last image instead.
-            b = battery_info()
-            crit = getattr(config, "CRITICAL_BATTERY_PCT", 8)
-            if b and not b["charging"] and b["pct"] <= crit:
-                log_wake("CRITICAL battery %s — skipping update, "
-                         "long sleep" % battery_log_str(b))
-                print("critical battery: coasting")
-                wifi_off()
-                scheduler.note_expected_wake(
-                    config.CRITICAL_SLEEP_MINUTES * 60)
-                scheduler.sleep_for(
-                    config.CRITICAL_SLEEP_MINUTES * 60)
-                continue
-
-            # Docked and charging: show the Wave as a splash screen.
-            # Power is free, so this is also the ideal OTA moment.
-            if b and b["charging"]:
-                try:
-                    _stage("wifi")
-                    connect_wifi()
-                    _stage("ntp")
-                    sync_clock()
-                    _stage("ota")
-                    _maybe_ota()
-                except Exception as e:
-                    log_wake("charging net: %r" % (e,))
-                wifi_off()
-                _stage("splash")
-                # Repaint EVERY docked wake: the panel fades during
-                # rail-cut sleep, so a render-once splash turns into a
-                # blank screen within the hour ("blank for a long
-                # time" while docked). One flash per hour, same as
-                # weather mode.
-                state = weather_service._load_json(
-                    config.STATE_FILE) or {}
-                ui_renderer.render_splash()
-                state["last_render"] = "SPLASH"
-                weather_service._save_json(config.STATE_FILE, state)
-                log_wake("charging: splash refreshed")
-                button_wake = False
-                scheduler.note_expected_wake(3600)
-                scheduler.sleep_for(3600)
-                continue
-
-            source = establish_time()
-            hour = local_hour()
-            if hour is None:
-                # Clock unknowable (no RTC, no WiFi). Render anyway
-                # rather than sit dark all night.
-                log_wake("clock unknown (%s): rendering daytime" % source)
-                update_display()
-            elif is_quiet_hour(hour):
-                # button_wake: always flip back off the flashcard,
-                # even mid-night
-                if hour in config.NIGHT_WAKE_HOURS or button_wake:
-                    log_wake("night watch %02d:00 (%s)" % (hour, source))
-                    update_display(night_watch=True)
-                else:
-                    # Sleep STRAIGHT to the next event hour instead of
-                    # booting every hour just to decide to skip — each
-                    # pointless boot costs ~10s awake.
-                    secs = _seconds_to_next_night_event(hour)
-                    log_wake("quiet %02d:00 (%s): sleeping %dm to "
-                             "next event" % (hour, source, secs // 60))
-                    print("quiet hours: long sleep %ds" % secs)
-                    button_wake = False
-                    scheduler.note_expected_wake(secs)
-                    scheduler.sleep_for(secs)
-                    continue
-            else:
-                log_wake("update %02d:00 (%s)" % (hour, source))
-                update_display()
-        except Exception as e:
-            # Never brick the loop: leave the last good image on the
-            # e-ink (it persists unpowered) and try again next hour.
-            print("update failed:", e)
-            log_wake("FAILED: %r" % (e,))
+        scheduled_cycle(button_wake)
         button_wake = False
-        _stage("sleep")
-        secs = scheduler.seconds_until_next_update()
-        log_wake("sleeping %ds" % secs)
-        scheduler.note_expected_wake(secs)
-        scheduler.sleep_until_next_update()
 
 
 if __name__ == "__main__":

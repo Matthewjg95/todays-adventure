@@ -4,6 +4,9 @@ wifi_secrets.py
 # Runtime artifacts (device state, cached weather)
 state.json
 last_weather.json
+schedule_state.json
+schedule_state.json.tmp
+user_settings.json
 
 # Python
 __pycache__/
