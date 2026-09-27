@@ -1,5 +1,20 @@
 # Release and change record
 
+## September 27, 2026 — board installation verified
+
+At about 1:47 p.m. Eastern, the identified M5Paper on COM9 was instructed
+over USB to run its Wi-Fi OTA updater. Initial readback showed a31ed74;
+the board then downloaded and verified two changed files and recorded
+a22378c installed. All 26 on-device payload hashes matched the release.
+Battery readback was 100%; the full-battery wave render returned successfully
+and SHOW_LAST_UPDATED was False. The board was soft-reset and serial closed.
+The owner subsequently confirmed the splash screen is live on the physical
+display. Installation, render completion, and owner-observed appearance are
+confirmed; contest photos and video are still pending.
+Evidence: outputs/wave-ota-2026-09-27_134722/verification.txt in the task workspace.
+The earlier capture also recorded a September 27 06:58 UTC watchdog recovery
+at render on the preceding firmware; no root cause was established here.
+
 ## September 27, 2026 — full-battery wave splash
 
 OTA a22378c restores the Great Wave screen only when the reported battery
