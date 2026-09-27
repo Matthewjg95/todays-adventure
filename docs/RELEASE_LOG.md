@@ -1,5 +1,14 @@
 # Release and change record
 
+## September 27, 2026 — ten-second button interaction
+
+OTA 75a870a: side-button wakes show the detail card for ten seconds after
+rendering, then force the adventure display even at 100% battery. Scheduled
+non-button renders still show the wave at full battery. The facts-card caption
+now states ten seconds. E-ink refresh time is additional to the hold interval.
+73 desktop tests passed; all 26 OTA hashes verified. Device verification follows
+publication. To revert, restore the preceding main/renderer and regenerate OTA.
+
 ## September 27, 2026 — board installation verified
 
 At about 1:47 p.m. Eastern, the identified M5Paper on COM9 was instructed

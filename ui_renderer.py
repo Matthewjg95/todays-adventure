@@ -682,7 +682,7 @@ def render_splash():
 def render_facts(cv, ctx):
     """The flashcard's back side: today, in plain facts. Shown when
     the side button (not the RTC) woke the device; flips back to the
-    adventure side after a minute."""
+    adventure side after ten seconds."""
 
     cv.ink("gray")
     _center(cv, 45, "TODAY, IN DETAIL", S(18))
@@ -731,7 +731,7 @@ def render_facts(cv, ctx):
     cv.ink("gray")
     _center(cv, y + 20, "Day %d of %d" % (doy, total), 18)
     cv.ink("light")
-    _center(cv, 912, "BACK TO THE ADVENTURE IN A MINUTE", 18)
+    _center(cv, 912, "BACK TO THE ADVENTURE IN 10 SECONDS", 18)
     _upd_stamp(cv, ctx)
 
     cv.show()

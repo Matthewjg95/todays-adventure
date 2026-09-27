@@ -277,7 +277,7 @@ def _fingerprint(ctx, head, activities, wonder_text):
     ))
 
 
-def update_display(ctx=None, force=False, night_watch=False, keep_wifi=False):
+def update_display(ctx=None, force=False, night_watch=False, keep_wifi=False, allow_splash=True):
     if ctx is None:
         _stage("wifi")
         connect_wifi()
@@ -307,7 +307,7 @@ def update_display(ctx=None, force=False, night_watch=False, keep_wifi=False):
         activities = activities[:2]     # the adventure line is the star
 
     # Only touch the e-ink when something meaningful changed.
-    full_battery = bool(b and b["pct"] >= 100)
+    full_battery = bool(allow_splash and b and b["pct"] >= 100)
     fp = "SPLASH_FULL" if full_battery else _fingerprint(ctx, head, activities, wonder_text)
     state = weather_service._load_json(config.STATE_FILE) or {}
     if not force and state.get("last_render") == fp \
@@ -397,16 +397,16 @@ def demo_context():
     return ctx
 
 
-FLASHCARD_SECONDS = 60
+FLASHCARD_SECONDS = 10
 
 
 def show_flashcard():
-    """The side button woke us: show the facts card for a minute,
+    """The side button woke us: show the facts card for ten seconds,
     then fall through to the normal adventure render.
 
     Uses cached weather when possible so the card appears seconds
     after the button press — hour-old numbers are fine here, and the
-    flip-back render fetches fresh data anyway."""
+    follow-up uses cached weather unless a scheduled update is due."""
     try:
         raw = weather_service._load_json(config.CACHE_FILE)
         if raw is None or local_hour() is None:
@@ -511,7 +511,8 @@ def scheduled_cycle(button_wake=False):
             started = time.time()
             log_wake("slot=%s mode=%s drift=%ds batt=%s" %
                      (slot, mode, int(now - target), battery_log_str(b)))
-            update_display(force=True, night_watch=night, keep_wifi=True)
+            update_display(force=True, night_watch=night, keep_wifi=True,
+                           allow_splash=not button_wake)
             state["last"]["status"] = "completed"
             _save_schedule(state)
             log_wake("slot=%s completed duration=%ds" %
@@ -523,7 +524,10 @@ def scheduled_cycle(button_wake=False):
             # Restore the normal screen from cache after the facts card.
             if raw:
                 ctx = weather_service.build_context(raw=raw)
-                update_display(ctx, force=True, night_watch=is_quiet_hour(local_hour()))
+                update_display(ctx, force=True, night_watch=is_quiet_hour(local_hour()),
+                               allow_splash=False)
+            else:
+                update_display(force=True, allow_splash=False)
         else:
             log_wake("no unattempted slot; skipping network and render")
     except Exception as e:

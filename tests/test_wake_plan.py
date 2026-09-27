@@ -128,6 +128,18 @@ class TestCycle(unittest.TestCase):
         self.assertEqual(self.mocks[4].call_count, 1)
         self.mocks[5].assert_not_called()
 
+    def test_button_return_bypasses_splash_even_when_slot_due(self):
+        main.scheduled_cycle(True)
+        self.assertFalse(self.mocks[4].call_args.kwargs["allow_splash"])
+
+    def test_button_return_between_slots_bypasses_splash(self):
+        main.scheduled_cycle()
+        self.mocks[4].reset_mock()
+        with mock.patch.object(main.weather_service, "build_context", return_value=main.demo_context()), \
+                mock.patch.object(main, "local_hour", return_value=14):
+            main.scheduled_cycle(True)
+        self.assertFalse(self.mocks[4].call_args.kwargs["allow_splash"])
+
     def test_critical_battery_skips_network_even_if_charging_flag_lies(self):
         self.mocks[1].return_value = {"pct": 8, "mv": 3374, "charging": True}
         main.scheduled_cycle(True)
