@@ -24,7 +24,7 @@ USE_FAHRENHEIT = True
 QUIET_START = 23                # no hourly updates from this local hour...
 QUIET_END = 5                   # ...until this one (saves battery overnight)
 NIGHT_WAKE_HOURS = (23, 1, 3)   # ...except these: night-watch renders
-SHOW_LAST_UPDATED = True        # prototyping: render time, bottom right
+SHOW_LAST_UPDATED = False       # hide the update-time and battery footer
 ALWAYS_RENDER = True            # repaint every wake. The 08-21
                                 # "parked panel retains through sleep"
                                 # result does NOT hold in the field:

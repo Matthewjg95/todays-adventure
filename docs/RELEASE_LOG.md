@@ -1,5 +1,18 @@
 # Release and change record
 
+## September 27, 2026 — hide diagnostic footer
+
+OTA version a31ed74 disables SHOW_LAST_UPDATED in config.py, removing both
+the update-time stamp and its battery telemetry from the main display footer.
+Battery logging, protection, and the detail-card battery row remain available.
+Validation: 68 desktop tests passed, a direct recording-canvas check drew no
+footer with time and battery data present, and all 26 committed OTA payload
+hashes verified. The first test attempt lacked requests; rerun passed after
+installing desktop dependencies. Physical appearance and installed version
+remain unconfirmed until the board refreshes after installing this release.
+Rollback: restore SHOW_LAST_UPDATED=True and publish a freshly generated
+manifest; retain shared history. This release is prepared for upstream master.
+
 ## September 20, 2026 — seven-slot fridge schedule
 
 Firmware payload version: 8ec6ad1 (local source commit). The release includes
