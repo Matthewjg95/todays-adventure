@@ -6,8 +6,12 @@ OTA 75a870a: side-button wakes show the detail card for ten seconds after
 rendering, then force the adventure display even at 100% battery. Scheduled
 non-button renders still show the wave at full battery. The facts-card caption
 now states ten seconds. E-ink refresh time is additional to the hold interval.
-73 desktop tests passed; all 26 OTA hashes verified. Device verification follows
-publication. To revert, restore the preceding main/renderer and regenerate OTA.
+73 desktop tests passed; all 26 OTA hashes verified. Board installation was
+verified over USB after its Wi-Fi OTA updater installed 75a870a. All 26 on-device
+hashes matched. At reported 100% battery, the detail card, ten-second wait and
+forced adventure render completed. The wave was restored and scheduled sleep
+requested for the owner's physical-button recording. Evidence is saved in the
+task workspace at outputs/wave-ota-2026-09-27_151448/verification.txt. To revert, restore the preceding main/renderer and regenerate OTA.
 
 ## September 27, 2026 — board installation verified
 
