@@ -307,7 +307,8 @@ def update_display(ctx=None, force=False, night_watch=False, keep_wifi=False):
         activities = activities[:2]     # the adventure line is the star
 
     # Only touch the e-ink when something meaningful changed.
-    fp = _fingerprint(ctx, head, activities, wonder_text)
+    full_battery = bool(b and b["pct"] >= 100)
+    fp = "SPLASH_FULL" if full_battery else _fingerprint(ctx, head, activities, wonder_text)
     state = weather_service._load_json(config.STATE_FILE) or {}
     if not force and state.get("last_render") == fp \
             and not getattr(config, "ALWAYS_RENDER", True):
@@ -323,8 +324,11 @@ def update_display(ctx=None, force=False, night_watch=False, keep_wifi=False):
     state["last_render"] = fp
 
     _stage("render")
-    cv = ui_renderer.make_canvas()
-    ui_renderer.render(cv, ctx, head, activities, wonder_text)
+    if full_battery:
+        ui_renderer.render_splash()
+    else:
+        cv = ui_renderer.make_canvas()
+        ui_renderer.render(cv, ctx, head, activities, wonder_text)
     weather_service._save_json(config.STATE_FILE, state)
     print("rendered: %s | %s | %s"
           % (head, ", ".join(activities), wonder_text))
@@ -341,7 +345,7 @@ def update_display(ctx=None, force=False, night_watch=False, keep_wifi=False):
             and pct <= getattr(config, "LOW_BATTERY_PCT", 20)):
         secs = 0
         log_wake("  low battery: animation skipped")
-    if MICROPYTHON and secs:
+    if MICROPYTHON and secs and not full_battery:
         try:
             ui_renderer.animate_glyph(cv, ctx, secs)
         except Exception as e:

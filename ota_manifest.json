@@ -4,7 +4,7 @@
   "artwork.py": "c2fe7f959d7e1d3c71a5e5a25f908e09cb3b60c84eba1a145e5b64e01ca3915b",
   "config.py": "76d40122651f0f17c7871efb0f0ab393e362dc891de4e3f521680ce92e5210a1",
   "events.py": "b7fa4339dbafc6c022aa05f7cd458949808a010c45c164c076f5117e42eb0a65",
-  "main.py": "2cdbe23c17c50a7f57e67d53a241a20a067f00c39930d5360a89f6e75540c940",
+  "main.py": "00949c5e33ad2486aac19b99752083140ea020f7e9b0bb910212692a5721a543",
   "ota.py": "4b21f98e63a672e3f8b1c579df86fed745e9076f8b79d4c70f8586d324db019e",
   "recommendation_engine.py": "8831f1a4f58a53a3cd001c7eb1af9fca0c086c7d649faf33af9bd6c164a072e4",
   "scenes/special/samurai.png": "7ce6deabf422deb2f58f480a3d705f10459ee59ac9f02872102f06897350b1ab",
@@ -22,10 +22,10 @@
   "scenes/v3/storm.png": "ad6c673e4034fc8d0a818efc03cf62a8f55fa710ce0d4435f05e7408ab0628d7",
   "scheduler.py": "ef22778034f7a16d37f06c128153208a36e15fa29da17d9f1c7e938c86a1f215",
   "scoring_engine.py": "14494099cb54aa3a6e1a3347486f4347315360aabb71bb6b0a9c1bd83869da5c",
-  "ui_renderer.py": "a84d1f4e87794ba7f8af928b44a2e603cfd02ec0e2d9bf1c26a8dd0650f93754",
+  "ui_renderer.py": "c74011114048547c11b7806c1b71df4b12bfd43015a27bb9488f27f2b216aa57",
   "wake_plan.py": "9c9145e7fb7f1466c571064c513b85b81b7ff25ee56018e630fce7c21f4f303b",
   "weather_service.py": "c1bf42487e8c65302b8effa9e1a72dd5dde9ec5401b77d41c56c6e982f44afaf",
   "wonder_engine.py": "4fae3e61497651beb36c4b11aff2a20b437021d01e225ab9b14c07555542c3fc"
  },
- "version": "a31ed74"
+ "version": "a22378c"
 }

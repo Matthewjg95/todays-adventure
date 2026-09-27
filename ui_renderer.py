@@ -662,7 +662,7 @@ def _day_of_year(ctx):
 
 
 def render_splash():
-    """Charging dock mode: the Great Wave with the masthead."""
+    """Full-battery display: the Great Wave with the masthead."""
     cv = make_canvas()
     try:
         cv.draw_png(SCENES_DIR + "/special/wave_faithful.png", 0, 0)

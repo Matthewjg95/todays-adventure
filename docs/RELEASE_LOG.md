@@ -1,5 +1,18 @@
 # Release and change record
 
+## September 27, 2026 — full-battery wave splash
+
+OTA a22378c restores the Great Wave screen only when the reported battery
+percentage is at least 100. Charging below 100 keeps the adventure screen;
+the next render below 100 restores it. A full battery may still report 100
+after unplugging, so this is a battery-level trigger, not USB detection.
+Weather/network work and OTA checks continue on scheduled updates. The time
+and battery footer remain hidden. The detail card remains button-accessible.
+Validation: 69 desktop tests passed, including 99/100 percent with both charging
+states and the return below full; all 26 OTA hashes verified. Device installation
+and physical appearance are not yet confirmed. To revert, restore main.py and
+ui_renderer.py from the preceding release and generate a new OTA manifest.
+
 ## September 27, 2026 — hide diagnostic footer
 
 OTA version a31ed74 disables SHOW_LAST_UPDATED in config.py, removing both
