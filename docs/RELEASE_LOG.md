@@ -1,6 +1,15 @@
 # Release and change record
 
-## October 7, 2026 — interactive modules prototype (branch only, not released)
+## October 7, 2026 — interactive modules released over OTA (0648514)
+
+At the owner's request the prototype below was merged to master and published
+as OTA 0648514 (35 payloads: nine new modules/fixture plus changed main.py,
+config.py and ui_renderer.py). The board installs it after its next completed
+scheduled update with battery >= 30% (or charging); a button wake between slots
+does not check OTA. Installation and on-panel behavior are not yet confirmed.
+Rollback: BUTTON_WAKE_ACTION = "flashcard" in config.py and a new manifest.
+
+## October 7, 2026 — interactive modules prototype (branch)
 
 Branch feature/modular-companion adds the Home launcher (Today's Adventure,
 Daily Paper, Notebook, Weather Flashcard), global hold-to-Home on the side
