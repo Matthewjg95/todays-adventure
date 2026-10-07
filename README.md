@@ -20,9 +20,13 @@ two points through the night it wakes for "night watch": quiet messages, some
 playful, some genuinely useful — an umbrella warning built from
 tomorrow's forecast, a frost alert for the plants.
 
-Press the side wheel and the display flips to a facts flashcard
-(temperature, humidity, wind, sun times, moon, tomorrow, battery)
-for a minute, then returns on its own.
+Press the side wheel and a Home launcher opens with four modules:
+Today's Adventure (back to the fridge cycle), a Daily Paper explored
+through a movable window, a handwriting Notebook, and the Weather
+Flashcard. Hold the side wheel anywhere to return Home; leave it alone
+and it saves and goes back to the fridge. See
+[interactive modules](docs/INTERACTIVE_MODULES.md) — a prototype on a
+feature branch, not yet released over OTA.
 
 ## Architecture
 
@@ -40,6 +44,12 @@ for a minute, then returns on its own.
 | `ui_renderer.py` | Full-frame offscreen compose → ONE absolute GC16 push (the only render that survives deep-sleep wakes); scene PNG compositing; flashcard |
 | `scheduler.py` | Deep sleep with panel parked and display rail cut; wake-cause detection; the only wake path that provably works on this hardware |
 | `main.py` | Wake → clock → fetch → render → sleep, with watchdog, battery guards, wake log |
+| `session.py` / `device_io.py` | Button-wake interactive session: timer-sampled button/rocker/touch, frame and ink drawing, watchdog feeding |
+| `home_app.py` / `screens.py` | Hardware-free controller and layouts: Home launcher, global hold-to-Home, module state |
+| `input_events.py` | Pure press/hold and tap/stroke state machines |
+| `newspaper.py` | Fixed large newspaper layout, reading route, viewport rendering, minimap |
+| `notebook.py` | Stroke capture, atomic note storage, export bundle + PBM render |
+| `tasks.py` | One task master snapshot (fixture for now); proposals never change status |
 
 Reliability machinery, all earned the hard way: a 4-minute hardware
 watchdog, fetch timeouts, a persistent `wake_log.txt` on flash with
@@ -104,7 +114,8 @@ python -m pip install -r requirements-dev.txt
 python main.py --demo      # fake perfect summer Saturday, ASCII mockup
 python main.py --once      # real weather for your configured location
 python -m unittest discover tests
-python tools/verify_ota_manifest.py
+python tools/verify_ota_manifest.py          # --pending off master
+python tools/preview.py    # PNG frames of the interactive modules
 ```
 
 Install `pyserial` for the serial uploader and `pillow-heif` for the

@@ -31,7 +31,7 @@ window. Collection may perturb the run; record every interruption.
 | Display retention | Photos immediately after render and before next wake | Image remains readable for the entire interval |
 | Overnight | Logs and representative night screen | Night-watch and morning transitions occur |
 | Charging to battery | Cable state, voltage, next rendered screen | Charging splash gives way to normal content |
-| Button | Video of press and return | Facts card appears and returns after about a minute |
+| Button | Video of press and return | Released firmware: facts card, then adventure. Interactive prototype: follow the sequence in INTERACTIVE_MODULES.md |
 | Network loss | Planned short outage, restoration, logs | Recoverable failure and later successful update |
 | Watchdog | Count and last-stage strings | No unexplained resets; any failure has useful evidence |
 | Battery | Start/end readings and elapsed time | Report measured drain, not an extrapolation as proven runtime |

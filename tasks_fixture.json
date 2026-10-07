@@ -1,0 +1,15 @@
+{
+ "fixture": true,
+ "source": "sample fixture - not a live task list",
+ "revision": 1,
+ "tasks": [
+  {"id": "T-0001", "title": "Measure overnight battery drain", "status": "active", "project": "Paper"},
+  {"id": "T-0002", "title": "Photograph the newspaper viewport", "status": "next", "project": "Paper"},
+  {"id": "T-0003", "title": "Pick a hold threshold that feels right", "status": "next", "project": "Paper"},
+  {"id": "T-0004", "title": "Sketch the companion export service", "status": "later", "project": "Notebook"},
+  {"id": "T-0005", "title": "Wait for the new USB cable", "status": "waiting", "project": "Bench"},
+  {"id": "T-0006", "title": "Sort the photo inbox", "status": "inbox", "project": "Home"},
+  {"id": "T-0007", "title": "Ship the seven-slot fridge schedule", "status": "done", "project": "Paper"},
+  {"id": "T-0008", "title": "Animated glyph rain", "status": "dropped", "project": "Paper"}
+ ]
+}

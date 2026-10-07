@@ -16,5 +16,15 @@ jobs:
           cache-dependency-path: requirements-dev.txt
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m unittest discover tests -v
-      - run: python tools/verify_ota_manifest.py
+      # master must match its published OTA manifest exactly. Other
+      # branches may be ahead of the release; drift is reported, not failed.
+      - if: github.ref == 'refs/heads/master'
+        run: python tools/verify_ota_manifest.py
+      - if: github.ref != 'refs/heads/master'
+        run: python tools/verify_ota_manifest.py --pending
       - run: python main.py --demo
+      - run: python tools/preview.py preview
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-preview
+          path: preview/

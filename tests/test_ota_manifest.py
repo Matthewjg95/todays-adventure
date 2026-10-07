@@ -5,7 +5,7 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from verify_ota_manifest import validate
+from verify_ota_manifest import split_pending, validate
 
 
 class TestManifestValidation(unittest.TestCase):
@@ -50,3 +50,14 @@ class TestManifestValidation(unittest.TestCase):
             raise OSError("missing")
         self.assertTrue(any("unreadable" in e for e in
                             validate(self.manifest, self.expected, missing)))
+
+
+class TestPendingRelease(unittest.TestCase):
+    def test_drift_is_pending_but_structure_still_fails(self):
+        errors = ["missing file: session.py", "hash mismatch: main.py",
+                  "unexpected file: old.py", "wrong destination: main.py",
+                  "version must be a nonempty string"]
+        hard, pending = split_pending(errors)
+        self.assertEqual(len(pending), 3)
+        self.assertEqual(hard, ["wrong destination: main.py",
+                                "version must be a nonempty string"])

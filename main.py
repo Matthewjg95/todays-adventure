@@ -431,6 +431,29 @@ def show_flashcard():
     weather_service._save_json(config.STATE_FILE, state)
 
 
+def run_interactive(wdt=None):
+    """Side-button wake: Home launcher and modules until the user picks
+    Today's Adventure or goes idle. Returns; the caller then resumes the
+    fridge cycle. No sleep can be scheduled while this runs."""
+    def feed():
+        if wdt:
+            wdt.feed()
+    host = {"feed": feed, "log": log_wake, "stage": _stage,
+            "wifi_off": wifi_off, "sync_clock": sync_clock,
+            "battery": battery_info, "battery_str": battery_log_str}
+    try:
+        import session
+        reason = session.run(host)
+    except Exception as e:
+        reason = "failed: %r" % (e,)
+    log_wake("session ended (%s); resuming fridge cycle" % reason)
+    # The follow-up adventure render must repaint, not be skipped.
+    state = weather_service._load_json(config.STATE_FILE) or {}
+    state["last_render"] = None
+    weather_service._save_json(config.STATE_FILE, state)
+    return reason
+
+
 def _seconds_to_next_night_event(hour):
     """Seconds from now (top-of-hour wake) to the next hour that has
     work: a night-watch render or the end of quiet hours. Clamped to
@@ -584,7 +607,10 @@ def run_forever():
              ("button" if button_wake else "timer", scheduler.WAKE_DETAIL,
               hung, boot_source, battery_log_str()))
     if button_wake:
-        show_flashcard()
+        if getattr(config, "BUTTON_WAKE_ACTION", "home") == "home":
+            run_interactive(wdt)
+        else:
+            show_flashcard()
     while True:
         if wdt:
             wdt.feed()

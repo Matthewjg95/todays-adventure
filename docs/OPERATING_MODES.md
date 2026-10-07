@@ -44,3 +44,14 @@ observation; historical retention concerns are not treated as a deployment gate.
 Initial uploads must include wake_plan.py alongside the other runtime modules.
 The OTA manifest includes thirteen runtime modules and thirteen scene files
 (26 payloads).
+
+## Side-button sessions (interactive-modules prototype, unreleased)
+
+A side-button wake opens the Home launcher instead of the facts card. The
+scheduled cycle does not run while the launcher or a module is open, so no
+sleep is scheduled while reading or writing. Choosing Today's Adventure, or
+three idle minutes, resumes the cycle: a due slot runs (coalesced as usual),
+otherwise the adventure is repainted from cache, then the device sleeps to the
+next slot. The hold threshold can be set OTA-safely with
+{"home_hold_ms": 1200} in user_settings.json (400–1900 ms).
+See [interactive modules](INTERACTIVE_MODULES.md).

@@ -58,7 +58,10 @@ class Link:
             "import sys\n"
             "for _m in ('main','config','artwork','ui_renderer',"
             "'weather_service','wonder_engine','scoring_engine',"
-            "'recommendation_engine','scheduler','wifi_secrets'):\n"
+            "'recommendation_engine','scheduler','wifi_secrets',"
+            "'wake_plan','adventures','events','ota','input_events',"
+            "'device_io','home_app','screens','newspaper','notebook',"
+            "'tasks','session'):\n"
             "    sys.modules.pop(_m, None)\n", quiet=True)
 
     def _interrupt(self):

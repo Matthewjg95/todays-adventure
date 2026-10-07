@@ -37,7 +37,8 @@ class Sprite:
 
     BLACK = 0x000000
     WHITE = 0xFFFFFF
-    SHADES = {"black": 0x000000, "gray": 0x333333, "light": 0x777777}
+    SHADES = {"black": 0x000000, "gray": 0x333333, "light": 0x777777,
+              "pale": 0xBBBBBB, "white": 0xFFFFFF}
 
     def __init__(self, lcd, x, y, w, h):
         self.lcd = lcd
@@ -88,7 +89,8 @@ class FullFrameCanvas:
 
     BLACK = 0x000000
     WHITE = 0xFFFFFF
-    SHADES = {"black": 0x000000, "gray": 0x333333, "light": 0x777777}
+    SHADES = {"black": 0x000000, "gray": 0x333333, "light": 0x777777,
+              "pale": 0xBBBBBB, "white": 0xFFFFFF}
 
     def __init__(self):
         import M5
@@ -164,6 +166,12 @@ class FullFrameCanvas:
     def arc(self, x, y, r, a0, a1):
         self.buf.drawArc(x, y, r + 1, r - 1, a0, a1, self._ink)
 
+    def fill_rect(self, x, y, w, h):
+        self.buf.fillRect(x, y, w, h, self._ink)
+
+    def rect(self, x, y, w, h):
+        self.buf.drawRect(x, y, w, h, self._ink)
+
     def draw_png(self, path, x, y):
         self.buf.drawPng(path, x, y)
 
@@ -179,10 +187,41 @@ class FullFrameCanvas:
         except Exception:
             return None
 
-    def show(self):
-        # One absolute full frame: correct from any prior state.
+    def reset(self):
+        """Reuse this one screen buffer for the next frame (interactive
+        sessions): no second 540x960 allocation, no repeated M5.begin."""
+        self._ink = self.BLACK
+        self.buf.fillScreen(self.WHITE)
+        self.buf.setTextColor(self.BLACK, self.WHITE)
+
+    def ink_segments(self, segments):
+        """Handwriting fast path: draw new pen segments into the buffer
+        (so the next full frame keeps them) and straight to the panel in
+        the fastest 1-bit mode. Only valid after a full frame has been
+        pushed in this session (the IT8951 must be in sync)."""
         try:
-            self.lcd.setEpdMode(1)
+            self.lcd.setEpdMode(4)
+        except Exception:
+            pass
+        start = getattr(self.lcd, "startWrite", None)
+        if start:
+            start()
+        try:
+            for x0, y0, x1, y1 in segments:
+                for d in (0, 1):
+                    self.buf.drawLine(x0, y0 + d, x1, y1 + d, self.BLACK)
+                    self.lcd.drawLine(x0, y0 + d, x1, y1 + d, self.BLACK)
+        finally:
+            end = getattr(self.lcd, "endWrite", None)
+            if end:
+                end()
+
+    def show(self, mode=1):
+        # One absolute full frame: correct from any prior state.
+        # mode 1 = GC16 quality; interactive pages may pass 2 (text)
+        # or 4 (fastest, pan intermediates).
+        try:
+            self.lcd.setEpdMode(mode)
         except Exception:
             pass
         self.buf.push(0, 0)
@@ -193,7 +232,8 @@ class UIFlow2Canvas:
 
     BLACK = 0x000000
     WHITE = 0xFFFFFF
-    SHADES = {"black": 0x000000, "gray": 0x333333, "light": 0x777777}
+    SHADES = {"black": 0x000000, "gray": 0x333333, "light": 0x777777,
+              "pale": 0xBBBBBB, "white": 0xFFFFFF}
 
     def __init__(self, clear=True):
         import M5
@@ -293,6 +333,12 @@ class UIFlow2Canvas:
         except Exception:
             return None
 
+    def fill_rect(self, x, y, w, h):
+        self.lcd.fillRect(x, y, w, h, self._ink)
+
+    def rect(self, x, y, w, h):
+        self.lcd.drawRect(x, y, w, h, self._ink)
+
     def draw_png(self, path, x, y):
         self.lcd.drawPng(path, x, y)
 
@@ -353,7 +399,19 @@ class TextCanvas:
     def fill_circle_white(self, *a):
         pass
 
-    def show(self):
+    def fill_rect(self, *a):
+        pass
+
+    def rect(self, *a):
+        pass
+
+    def reset(self):
+        self.lines = []
+
+    def ink_segments(self, segments):
+        pass
+
+    def show(self, mode=1):
         cols = 44
         print("+" + "-" * cols + "+")
         for y, x, s, size in sorted(self.lines):
@@ -679,7 +737,8 @@ def render_splash():
     cv.show()
 
 
-def render_facts(cv, ctx):
+def render_facts(cv, ctx, footer="BACK TO THE ADVENTURE IN 10 SECONDS",
+                 show=True):
     """The flashcard's back side: today, in plain facts. Shown when
     the side button (not the RTC) woke the device; flips back to the
     adventure side after ten seconds."""
@@ -731,7 +790,8 @@ def render_facts(cv, ctx):
     cv.ink("gray")
     _center(cv, y + 20, "Day %d of %d" % (doy, total), 18)
     cv.ink("light")
-    _center(cv, 912, "BACK TO THE ADVENTURE IN 10 SECONDS", 18)
+    _center(cv, 912, footer, 18)
     _upd_stamp(cv, ctx)
 
-    cv.show()
+    if show:
+        cv.show()

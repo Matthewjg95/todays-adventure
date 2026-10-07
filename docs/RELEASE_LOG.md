@@ -1,5 +1,17 @@
 # Release and change record
 
+## October 7, 2026 — interactive modules prototype (branch only, not released)
+
+Branch feature/modular-companion adds the Home launcher (Today's Adventure,
+Daily Paper, Notebook, Weather Flashcard), global hold-to-Home on the side
+button with wake-press disarming, a fixed large newspaper with a viewport
+route and minimap, handwriting capture with atomic local storage, and a
+fixture-backed task master. The OTA manifest was deliberately left at 75a870a;
+CI reports the nine new payloads as pending off master. Desktop evidence only:
+unit tests, a Pillow preview of the full test sequence, and the pure modules
+run under the MicroPython 1.24.1 unix port. No serial connection, flash or
+physical observation took place. See docs/INTERACTIVE_MODULES.md.
+
 ## September 27, 2026 — ten-second button interaction
 
 OTA 75a870a: side-button wakes show the detail card for ten seconds after

@@ -1,6 +1,7 @@
 # Build and run Today's Adventure
 
-This guide includes the September 20 seven-slot scheduling release.
+This guide includes the September 20 seven-slot scheduling release and the
+unreleased interactive-modules prototype ([details](INTERACTIVE_MODULES.md)).
 See [operating modes](OPERATING_MODES.md) for schedule and power preferences.
 
 ## Hardware and software
@@ -70,7 +71,7 @@ python tools/m5link.py exec "import os; [os.mkdir(p) for p in ('/flash/scenes','
    in one upload session:
 
 ```powershell
-$modules = @('main.py','config.py','scheduler.py','wake_plan.py','ui_renderer.py','weather_service.py','scoring_engine.py','recommendation_engine.py','wonder_engine.py','adventures.py','events.py','artwork.py','ota.py','wifi_secrets.py')
+$modules = @('main.py','config.py','scheduler.py','wake_plan.py','ui_renderer.py','weather_service.py','scoring_engine.py','recommendation_engine.py','wonder_engine.py','adventures.py','events.py','artwork.py','ota.py','input_events.py','device_io.py','home_app.py','screens.py','newspaper.py','notebook.py','tasks.py','session.py','tasks_fixture.json','wifi_secrets.py')
 $uploadPairs = @()
 foreach ($name in $modules) { $uploadPairs += @($name, "/flash/$name") }
 $uploadPairs += @('boot_device.py', '/flash/boot.py')
@@ -133,7 +134,8 @@ does not require the manifest version to equal a later documentation commit.
 
 | Symptom | First check |
 |---|---|
-| Import failure immediately after boot | Confirm all thirteen runtime modules, including wake_plan, adventures, events and ota, were uploaded. |
+| Import failure immediately after boot | Confirm all runtime modules, including wake_plan, adventures, events and ota, were uploaded. |
+| Side button shows the fridge screen, not Home | `session ended (failed: ...)` in the wake log usually means an interactive module (session, home_app, screens, newspaper, notebook, tasks, input_events, device_io) or tasks_fixture.json is missing. |
 | Missing scene art or splash | Confirm both scene directories and their files exist on flash. |
 | Device stays on the Wave after unplugging | Inspect voltage trend and charging classification in the wake log. |
 | Screen fades between wakes | Record time since render and rail-cut setting; repainting is a mitigation. |

@@ -51,6 +51,27 @@ GLYPH_ANIMATE_SECONDS = 0       # glyph movement after each render.
                                 # ~90s) on a 1.5-day battery.
 SCENE_SET = "v3"                # which art set to draw: v1 | v2 | v3
 
+# --- Interactive modules (side-button wake) --------------------------------
+BUTTON_WAKE_ACTION = "home"     # "home": launcher + modules;
+                                # "flashcard": the old 10-second facts card
+HOME_HOLD_MS = 1000             # side-button hold that returns Home.
+                                # Clamped to 400..1900 ms: the same
+                                # button powers the board ON with a ~2 s
+                                # press (M5Stack docs), so Home stays
+                                # clearly shorter. See
+                                # docs/INTERACTIVE_MODULES.md.
+INTERACTIVE_IDLE_SECONDS = 180  # untouched this long: save, back to fridge
+                                # (halved at/below LOW_BATTERY_PCT)
+INTERACTIVE_EPD_MODE = 1        # page turns: 1 = GC16 (proven); 2 = text
+                                # mode, less flash, unverified on panel
+PAPER_PAN_FRAMES = 0            # 0 = clean stepped redraw (default);
+                                # N = N fast intermediate pan frames
+ROCKER_NEXT_PIN = 37            # wheel rocked right (M5Paper pin map)
+ROCKER_BACK_PIN = 39            # wheel rocked left; swap if reversed
+TOUCH_SWAP_XY = False           # GT911 orientation fixes, if the panel
+TOUCH_FLIP_X = False            # rotation and touch disagree
+TOUCH_FLIP_Y = False
+
 # --- Weather API (Open-Meteo: free, no API key) ---------------------------
 WEATHER_URL = (
     "http://api.open-meteo.com/v1/forecast"
@@ -76,6 +97,9 @@ try:
         _prefs = _json.load(_f)
     if _prefs.get("power_mode") in ("fridge", "plugged"):
         POWER_MODE = _prefs["power_mode"]
+    _hold = _prefs.get("home_hold_ms")
+    if isinstance(_hold, int) and 400 <= _hold <= 1900:
+        HOME_HOLD_MS = _hold        # survives OTA, unlike edits to this file
     _interval = _prefs.get("plugged_interval_minutes", 60)
     if isinstance(_interval, int) and _interval in (30, 60, 120, 180, 240):
         PLUGGED_INTERVAL_MINUTES = _interval

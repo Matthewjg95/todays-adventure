@@ -29,6 +29,16 @@ DEVICE_FILES = {
     "artwork.py": "artwork.py",
     "ota.py": "ota.py",
     "wake_plan.py": "wake_plan.py",
+    # Interactive companion (Home launcher and modules)
+    "input_events.py": "input_events.py",
+    "device_io.py": "device_io.py",
+    "home_app.py": "home_app.py",
+    "screens.py": "screens.py",
+    "newspaper.py": "newspaper.py",
+    "notebook.py": "notebook.py",
+    "tasks.py": "tasks.py",
+    "session.py": "session.py",
+    "tasks_fixture.json": "tasks_fixture.json",
 }
 SCENE_DIRS = ("scenes/v3", "scenes/special")
 

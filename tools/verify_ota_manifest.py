@@ -37,6 +37,16 @@ def validate(manifest, expected, read_bytes):
     return errors
 
 
+# Errors that only mean "the code moved on since the last release".
+# Branch builds report these as pending; master must have none.
+DRIFT = ("missing file: ", "unexpected file: ", "hash mismatch: ")
+
+
+def split_pending(errors):
+    pending = [e for e in errors if e.startswith(DRIFT)]
+    return [e for e in errors if e not in pending], pending
+
+
 def main():
     root = Path(__file__).resolve().parents[1]
     manifest = json.loads((root / "ota_manifest.json").read_text(encoding="utf-8"))
@@ -48,10 +58,22 @@ def main():
     def committed(path):
         return subprocess.check_output(["git", "show", "HEAD:" + path], cwd=root)
     errors = validate(manifest, expected, committed)
+    if "--pending" in sys.argv:
+        # Feature branches: code may be ahead of the published release.
+        # The manifest is regenerated only as a deliberate release step.
+        errors, pending = split_pending(errors)
+        for item in pending:
+            print("PENDING (not released):", item)
+        if pending:
+            print("Manifest still describes released version %s; %d payload "
+                  "change(s) await a deliberate release." %
+                  (manifest.get("version"), len(pending)))
     for error in errors:
         print("ERROR:", error)
     if errors:
         return 1
+    if "--pending" in sys.argv:
+        return 0
     print("OTA verified: %s, %d files (committed HEAD bytes)" %
           (manifest["version"], len(expected)))
     return 0

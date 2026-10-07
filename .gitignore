@@ -7,6 +7,12 @@ last_weather.json
 schedule_state.json
 schedule_state.json.tmp
 user_settings.json
+app_state.json
+app_state.json.tmp
+task_proposals.json
+notes/
+exports/
+preview/
 
 # Python
 __pycache__/
