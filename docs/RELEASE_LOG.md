@@ -7,7 +7,8 @@ Daily Paper, Notebook, Weather Flashcard), global hold-to-Home on the side
 button with wake-press disarming, a fixed large newspaper with a viewport
 route and minimap, handwriting capture with atomic local storage, and a
 fixture-backed task master. The OTA manifest was deliberately left at 75a870a;
-CI reports the nine new payloads as pending off master. Desktop evidence only:
+CI reports twelve pending payloads off master (nine new files; main.py,
+config.py and ui_renderer.py changed). Desktop evidence only:
 unit tests, a Pillow preview of the full test sequence, and the pure modules
 run under the MicroPython 1.24.1 unix port. No serial connection, flash or
 physical observation took place. See docs/INTERACTIVE_MODULES.md.
