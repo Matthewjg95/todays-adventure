@@ -71,7 +71,7 @@ python tools/m5link.py exec "import os; [os.mkdir(p) for p in ('/flash/scenes','
    in one upload session:
 
 ```powershell
-$modules = @('main.py','config.py','scheduler.py','wake_plan.py','ui_renderer.py','weather_service.py','scoring_engine.py','recommendation_engine.py','wonder_engine.py','adventures.py','events.py','artwork.py','ota.py','input_events.py','device_io.py','home_app.py','screens.py','newspaper.py','notebook.py','tasks.py','session.py','tasks_fixture.json','wifi_secrets.py')
+$modules = @('main.py','config.py','scheduler.py','wake_plan.py','ui_renderer.py','weather_service.py','scoring_engine.py','recommendation_engine.py','wonder_engine.py','adventures.py','events.py','artwork.py','ota.py','input_events.py','device_io.py','home_app.py','screens.py','newspaper.py','notebook.py','tasks.py','session.py','edition.py','tasks_fixture.json','wifi_secrets.py')
 $uploadPairs = @()
 foreach ($name in $modules) { $uploadPairs += @($name, "/flash/$name") }
 $uploadPairs += @('boot_device.py', '/flash/boot.py')

@@ -92,5 +92,34 @@ store = notebook.NotebookStore("notes")
 app.note.add_point(1, 1, 999)
 store.save(app.note)
 assert store.load(app.note.id).point_count() == 21
+# Daily Paper edition: validate, cache (rename-over), render news.
+import edition  # noqa: E402
+import json  # noqa: E402
+NOW = 1791450000
+ed = {"format": edition.FORMAT, "generated": NOW, "id": "smoke",
+      "sections": {"top": [{"title": "\u201cLead\u201d story \u2014 caf\u00e9",
+                            "summary": "word " * 120, "source": "NPR"},
+                           {"title": "Second", "summary": "", "source": "NPR"}],
+                   "local": [{"title": "Local thing", "summary": "s", "source": "L"}]}}
+raw = json.dumps(ed).encode()
+got = edition.fetch_and_store("u", "edition.json", lambda url: raw, NOW)
+assert got["sections"]["top"][0]["title"].startswith('"Lead" story - caf'), got
+ed["generated"] = NOW + 60
+edition.fetch_and_store("u", "edition.json", lambda url: json.dumps(ed).encode(), NOW + 120)
+assert edition.load_cached("edition.json", NOW + 120)["generated"] == NOW + 60
+try:
+    edition.fetch_and_store("u", "edition.json", lambda url: b"<html>", NOW)
+    raise AssertionError("bad download accepted")
+except edition.EditionError:
+    pass
+blocks = newspaper.build_edition(None, None, None, None, [], "Thu", got["sections"],
+                                 "Edition of Thu", False)
+paper = newspaper.Paper(blocks, newspaper.route_titles(got["sections"]))
+for i in range(len(newspaper.ROUTE)):
+    cv = Canvas()
+    paper.render_window(cv, *newspaper.stop_origin(i))
+    newspaper.render_bar(cv, paper, i, *newspaper.stop_origin(i))
+assert any("TODAY'S EDITION" in l[2] for l in cv.lines)
+
 print("mp_smoke OK", sys.implementation.name,
       "stops", len(newspaper.ROUTE), "notes", store.list_ids())

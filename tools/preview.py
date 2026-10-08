@@ -7,12 +7,16 @@ same input state machines the device uses, and saves every frame:
   launcher -> newspaper navigation -> handwriting -> hold to Home
   -> "restart" -> reopen note -> paper resumes -> Adventure
 
-    python tools/preview.py [outdir]        (default: preview/)
+    python tools/preview.py [outdir] [--edition edition.json]
+
+Without --edition the Paper shows its labelled sample edition, as a
+board that has not downloaded one yet would.
 
 Weather in the preview is the synthetic demo day, labelled as such.
 State and notes go to a temporary folder, never the repo.
 """
 
+import json
 import os
 import shutil
 import sys
@@ -37,6 +41,19 @@ import tasks  # noqa: E402
 import ui_renderer  # noqa: E402
 import wonder_engine  # noqa: E402
 from preview_canvas import PILCanvas  # noqa: E402
+
+
+EDITION = None          # (sections, label, stale) when --edition is given
+
+
+def load_edition(path):
+    import edition
+    with open(path) as f:
+        ed = edition.validate(json.load(f))
+    import time
+    t = time.localtime(ed["generated"])
+    return (ed["sections"], time.strftime("Edition of %a, %b %d, %I:%M %p (desktop)", t),
+            False)
 
 
 def demo_weather():
@@ -65,6 +82,7 @@ class Rig:
             state_path=os.path.join(self.work, "app_state.json"),
             weather=self.weather,
             date_str=lambda: "Wednesday, October 7 (desktop preview)",
+            edition=lambda: EDITION,
             wall_time=lambda: 1791400000 + self.t // 1000)
         self.app = home_app.App(self.env)
         self.button = ie.ButtonTracker(1000)
@@ -155,8 +173,10 @@ def paper_overview(path):
     """The whole paper with the reading route: a desktop-only picture."""
     ctx, wonder_text, adv = demo_weather()
     snap = tasks.TaskMaster(os.path.join(ROOT, "tasks_fixture.json")).snapshot()
+    news, label, stale = EDITION or (None, None, False)
     paper = newspaper.Paper(newspaper.build_edition(
-        snap, ctx, wonder_text, adv, ["Note N0001"], "Wednesday, October 7"))
+        snap, ctx, wonder_text, adv, ["Note N0001"], "Wednesday, October 7",
+        news, label, stale), newspaper.route_titles(news))
     big = Image.new("L", (newspaper.PAPER_W, newspaper.PAPER_H), 255)
     for c in range(newspaper.COLS):
         for r in range(newspaper.ROWS):
@@ -271,4 +291,9 @@ def run(outdir):
 
 
 if __name__ == "__main__":
-    run(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "preview"))
+    args = sys.argv[1:]
+    if "--edition" in args:
+        i = args.index("--edition")
+        EDITION = load_edition(args[i + 1])
+        del args[i:i + 2]
+    run(args[0] if args else os.path.join(ROOT, "preview"))

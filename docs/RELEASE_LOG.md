@@ -1,5 +1,17 @@
 # Release and change record
 
+## October 8, 2026 — real Daily Paper editions (branch feature/daily-paper-edition)
+
+Owner reported the 0648514 interactive modules working on the Paper (hold
+timing, wheel direction, page turns and ink all acceptable). This branch replaces
+the sample newspaper with real editions: tools/build_edition.py builds a capped
+edition.json from public feeds, .github/workflows/edition.yml publishes it to the
+data-only `edition` branch three times a day, and the Paper downloads it at
+scheduled updates (after the render, before OTA, same battery gate). Desktop
+evidence: 151 tests, a live build from the five feeds (18 stories, 4.3 KB), a
+Pillow preview of the live layout, and the device modules under the MicroPython
+1.24.1 unix port. Not yet released over OTA; the workflow starts after merge.
+
 ## October 7, 2026 — interactive modules released over OTA (0648514)
 
 At the owner's request the prototype below was merged to master and published

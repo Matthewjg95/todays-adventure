@@ -64,6 +64,23 @@ def cached_weather(battery_str=None):
         return None, None, None
 
 
+def cached_edition():
+    """(sections, label, stale) from the downloaded edition, or None."""
+    import edition
+    now = int(time.time())
+    ed = edition.load_cached(now=now if time.gmtime()[0] >= 2024 else None)
+    if ed is None:
+        return None
+    raw = weather_service._load_json(config.CACHE_FILE) or {}
+    t = time.localtime(ed["generated"] + raw.get("utc_offset_seconds", 0))
+    h12 = t[3] % 12 or 12
+    label = "Edition of %s, %s %d, %d:%02d %s" % (
+        weather_service._WEEKDAYS[t[6]][:3], weather_service._MONTHS[t[1] - 1][:3],
+        t[2], h12, t[4], "AM" if t[3] < 12 else "PM")
+    stale = time.gmtime()[0] >= 2024 and edition.is_stale(ed, now)
+    return ed["sections"], label, stale
+
+
 def refresh_weather(host, sampler):
     """Fetch now, abandoning the attempt if the user holds for Home.
     The hold itself stays queued so the main loop still acts on it."""
@@ -123,7 +140,8 @@ def run(host):
         weather=lambda: cached_weather(host["battery_str"]),
         refresh_weather=lambda: refresh_weather(host, sampler),
         date_str=date_str, wall_time=wall_time, idle_ms=idle_ms,
-        pan_frames=getattr(config, "PAPER_PAN_FRAMES", 0), log=host["log"])
+        pan_frames=getattr(config, "PAPER_PAN_FRAMES", 0), log=host["log"],
+        edition=cached_edition)
     app = home_app.App(env)
     cv = ui_renderer.make_canvas()
     host["log"]("session start (hold=%dms idle=%ds)"

@@ -1,6 +1,7 @@
 name: Desktop checks
 on:
   push:
+    branches-ignore: [edition]   # data-only branch, no code
   pull_request:
 permissions:
   contents: read

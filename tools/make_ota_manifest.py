@@ -38,6 +38,7 @@ DEVICE_FILES = {
     "notebook.py": "notebook.py",
     "tasks.py": "tasks.py",
     "session.py": "session.py",
+    "edition.py": "edition.py",
     "tasks_fixture.json": "tasks_fixture.json",
 }
 SCENE_DIRS = ("scenes/v3", "scenes/special")

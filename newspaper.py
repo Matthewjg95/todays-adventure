@@ -139,69 +139,141 @@ def _weather_items(ctx, wonder_text, adventure):
     return items
 
 
-def build_edition(snapshot=None, ctx=None, wonder_text=None, adventure=None,
-                  notes=None, date_str=None):
-    """Blocks: list of (id, x, y, w, h, items). Positions never depend
-    on the content, so the paper keeps its shape edition to edition."""
-    notes = notes or []
-    blocks = []
-    # Masthead: one band across the whole paper.
-    blocks.append(("masthead", 0, 0, PAPER_W, MAST_H, [
-        ("masthead", date_str or "Undated sample edition")]))
+SAMPLE_TITLES = tuple(t for _, _, t in ROUTE)
+NEWS_TITLES = ("Front page", "Top story", "More top stories",
+               "Adventure & weather", "World", "Notes", "Waiting & later",
+               "Technology", "Local")
+SECTION_NAMES = {"top": "TOP STORIES", "world": "WORLD", "tech": "TECHNOLOGY",
+                 "local": "LOCAL"}
 
+
+def route_titles(news=None):
+    return NEWS_TITLES if news else SAMPLE_TITLES
+
+
+def _sources(items):
+    names = []
+    for it in items:
+        if it.get("source") and it["source"] not in names:
+            names.append(it["source"])
+    return ", ".join(names).upper()
+
+
+def _news_cell(news, section, lead=False, skip=0, count=None):
+    items = (news.get(section) or [])[skip:]
+    if count is not None:
+        items = items[:count]
+    if not items:
+        return [("kicker", SECTION_NAMES[section]),
+                ("small", "No %s stories in this edition."
+                 % SECTION_NAMES[section].lower())]
+    out = [("kicker", "%s - %s" % (SECTION_NAMES[section] if not lead
+                                   else "TOP STORY" if section == "top"
+                                   else SECTION_NAMES[section], _sources(items)))]
+    if lead:
+        out.append(("head", items[0]["title"], 40))
+        if items[0]["summary"]:
+            out.append(("body", items[0]["summary"]))
+        items = items[1:]
+    for it in items:
+        out.append(("brief", it["title"], it["summary"]))
+    return out
+
+
+def build_edition(snapshot=None, ctx=None, wonder_text=None, adventure=None,
+                  notes=None, date_str=None, news=None, news_label=None,
+                  stale=False):
+    """Blocks: list of (id, x, y, w, h, items). Positions never depend
+    on the content, so the paper keeps its shape edition to edition.
+
+    news: validated edition sections (edition.validate), or None for
+    the clearly labelled sample edition."""
+    notes = notes or []
+    titles = route_titles(news)
+    if news:
+        box = ("OLDER EDITION" if stale else "TODAY'S EDITION")
+        lines = [news_label or "",
+                 "Headlines and summaries from public news feeds. "
+                 "Full stories are at the source."]
+        if stale:
+            lines.insert(1, "No newer edition has arrived; news may be out of date.")
+    else:
+        box = "SAMPLE EDITION"
+        lines = ["Not live news. Stories and tasks are sample content."]
+    blocks = [("masthead", 0, 0, PAPER_W, MAST_H, [
+        ("masthead", date_str or "Undated edition", box, lines, titles[1:6])])]
+
+    task_label = "SAMPLE TASKS (FIXTURE)"
+    if snapshot is not None and not snapshot.is_fixture:
+        task_label = "FROM YOUR TASK LIST"
     cells = {
-        (0, 0): [("kicker", "PRIORITIES - SAMPLE TASKS (FIXTURE)"),
+        (0, 0): [("kicker", "PRIORITIES - " + task_label),
                  ("head", "Today's short list", 40),
                  ("bullets", _task_lines(snapshot, ("active", "next"))),
                  ("small", "Read from one task master snapshot. The Paper "
                            "never changes a task's status.")],
-        (1, 0): [("kicker", "ENGINEERING - SAMPLE ARTICLE"),
-                 ("head", "The button that waits for a release", 40),
-                 ("body", "The wheel push also switches this Paper on. "
-                          "A Home hold stays shorter than that power-on "
-                          "press, and the press that woke the board never "
-                          "counts: the button is ignored until released."),
-                 ("small", "Continued below, two stops on.")],
-        (2, 0): [("kicker", "PROJECT DESK - SAMPLE"),
-                 ("head", "A fridge companion grows a home screen", 40),
-                 ("body", "Four modules now share one launcher: the "
-                          "adventure, this paper, a notebook and the "
-                          "weather card. Hold the side button anywhere "
-                          "to come home.")],
         (2, 1): _weather_items(ctx, wonder_text, adventure),
-        (1, 1): [("kicker", "ENGINEERING, CONTINUED"),
-                 ("head", "Ink first, pixels later", 40),
-                 ("body", "Pen points are stored the moment they arrive, "
-                          "before anything is drawn. A slow e-ink refresh "
-                          "can delay the picture, but it cannot drop the "
-                          "stroke. Saving writes a temporary file and "
-                          "renames it, after checking free flash.")],
         (0, 1): [("kicker", "NOTES - FROM THIS PAPER'S NOTEBOOK"),
                  ("head", "Your pages", 40),
                  ("bullets", notes[:6] or ["No saved notes yet."]),
                  ("small", "Handwriting stays local. Transcription is a "
                            "later, optional step.")],
-        (0, 2): [("kicker", "WAITING & LATER - SAMPLE TASKS (FIXTURE)"),
+        (0, 2): [("kicker", "WAITING & LATER - " + task_label),
                  ("head", "Parked, not forgotten", 40),
                  ("bullets", _task_lines(snapshot, ("waiting", "later", "inbox")))],
-        (1, 2): [("kicker", "FIELD SKETCH"),
-                 ("art", "partly"),
-                 ("head", "Look up once today", 40),
-                 ("body", "An illustration slot. Future editions can carry "
-                          "the day's scene here.")],
-        (2, 2): [("kicker", "ABOUT THIS EDITION"),
-                 ("head", "Sample edition", 40),
-                 ("body", "Stories and tasks here are samples, not live "
-                          "information. Weather is shown only when this "
-                          "Paper has cached it."),
-                 ("small", "Next: short press, right rocker or tap the "
-                           "right half. Back: left rocker or tap the left "
-                           "half. Hold the side button for Home.")],
     }
+    if news:
+        cells[(1, 0)] = _news_cell(news, "top", lead=True, count=1)
+        cells[(2, 0)] = _news_cell(news, "top", skip=1)
+        cells[(1, 1)] = _news_cell(news, "world", lead=True)
+        cells[(1, 2)] = _news_cell(news, "tech")
+        cells[(2, 2)] = _news_cell(news, "local")
+        if len(news.get("top") or []) < 2:
+            cells[(2, 0)] = [("kicker", "MORE TOP STORIES"),
+                             ("small", "Only one top story in this edition.")]
+    else:
+        cells.update(_SAMPLE_CELLS)
     for (col, row), items in sorted(cells.items(), key=lambda kv: (kv[0][1], kv[0][0])):
         x, y, w, h = cell_rect(col, row)
         blocks.append(("c%d%d" % (col, row), x, y, w, h, items))
     return blocks
+
+
+_SAMPLE_CELLS = {
+    (1, 0): [("kicker", "ENGINEERING - SAMPLE ARTICLE"),
+             ("head", "The button that waits for a release", 40),
+             ("body", "The wheel push also switches this Paper on. "
+                      "A Home hold stays shorter than that power-on "
+                      "press, and the press that woke the board never "
+                      "counts: the button is ignored until released."),
+             ("small", "Continued below, two stops on.")],
+    (2, 0): [("kicker", "PROJECT DESK - SAMPLE"),
+             ("head", "A fridge companion grows a home screen", 40),
+             ("body", "Four modules now share one launcher: the "
+                      "adventure, this paper, a notebook and the "
+                      "weather card. Hold the side button anywhere "
+                      "to come home.")],
+    (1, 1): [("kicker", "ENGINEERING, CONTINUED"),
+             ("head", "Ink first, pixels later", 40),
+             ("body", "Pen points are stored the moment they arrive, "
+                      "before anything is drawn. A slow e-ink refresh "
+                      "can delay the picture, but it cannot drop the "
+                      "stroke. Saving writes a temporary file and "
+                      "renames it, after checking free flash.")],
+    (1, 2): [("kicker", "FIELD SKETCH"),
+             ("art", "partly"),
+             ("head", "Look up once today", 40),
+             ("body", "An illustration slot. Future editions can carry "
+                      "the day's scene here.")],
+    (2, 2): [("kicker", "ABOUT THIS EDITION"),
+             ("head", "Sample edition", 40),
+             ("body", "Stories and tasks here are samples, not live "
+                      "information. A real edition replaces this once the "
+                      "Paper downloads one at a scheduled update."),
+             ("small", "Next: short press, wheel or tap the right half. "
+                       "Back: wheel or tap the left half. Hold the side "
+                       "button for Home.")],
+}
 
 
 # --------------------------------------------------------------------------
@@ -222,71 +294,134 @@ def wrap(text, width, size, measure):
     return lines
 
 
+def _masthead_ops(item, by, measure):
+    _, date_str, box, lines, titles = item
+    ops = [("rule", 0, by + 18, PAPER_W, 2, "black"),
+           ("text", MARGIN, by + 34, "THE DAILY", 56, "black"),
+           ("text", MARGIN, by + 100, "PAPER", 56, "black"),
+           ("text", MARGIN, by + 178, date_str.upper(), 18, "gray")]
+    ox = STEP_X + MARGIN
+    ops.append(("box", ox, by + 42, CELL_W, 64, "black"))
+    ops.append(("text", ox + 16, by + 58, box, 24, "black"))
+    y = by + 122
+    for para in lines:
+        for line in wrap(para, CELL_W, 18, measure):
+            if y + 18 <= by + MAST_H - 14:
+                ops.append(("text", ox, y, line, 18, "gray"))
+            y += LINE[18]
+    ox = 2 * STEP_X + MARGIN
+    ops.append(("text", ox, by + 50, "IN THIS EDITION", 18, "gray"))
+    for i, title in enumerate(titles):
+        ops.append(("text", ox, by + 78 + i * LINE[18], title, 18, "black"))
+    ops.append(("rule", 0, by + MAST_H - 10, PAPER_W, 2, "black"))
+    ops.append(("rule", 0, by + MAST_H - 4, PAPER_W, 1, "black"))
+    return ops
+
+
+def _units(item, bx, y, bw, measure):
+    """Split one item into units that are kept or dropped whole:
+    (ops, y_after, cut_ok). Lines of running text are separate units
+    so long text can end early; a brief or bullet stays together."""
+    kind = item[0]
+    units = []
+    if kind == "kicker":
+        ops = []
+        for line in wrap(item[1], bw, 18, measure):
+            ops.append(("text", bx, y, line, 18, "gray"))
+            y += LINE[18]
+        ops.append(("rule", bx, y + 2, bw, 1, "light"))
+        units.append((ops, y + 14, False))
+    elif kind == "head":
+        size = item[2]
+        ops = []
+        for line in wrap(item[1], bw, size, measure):
+            ops.append(("text", bx, y, line, size, "black"))
+            y += LINE[size]
+        units.append((ops, y + 8, False))
+    elif kind in ("body", "small"):
+        size, shade, gap = (24, "black", 12) if kind == "body" else (18, "gray", 10)
+        lines = wrap(item[1], bw, size, measure)
+        for i, line in enumerate(lines):
+            y += LINE[size]
+            units.append(([("text", bx, y - LINE[size], line, size, shade)],
+                          y + (gap if i == len(lines) - 1 else 0), True))
+    elif kind == "bullets":
+        for entry in item[1]:
+            ops = []
+            for i, line in enumerate(wrap(entry, bw - 22, 24, measure)):
+                if i == 0:
+                    ops.append(("dot", bx + 5, y + 14, None, 4, "black"))
+                ops.append(("text", bx + 22, y, line, 24, "black"))
+                y += LINE[24]
+            y += 6
+            units.append((ops, y, False))
+        if units:
+            units[-1] = (units[-1][0], units[-1][1] + 8, False)
+    elif kind == "brief":
+        # Headline stays whole; its summary may end early with '...'.
+        ops = [("rule", bx, y, 60, 2, "black")]
+        y += 10
+        for line in wrap(item[1], bw, 24, measure):
+            ops.append(("text", bx, y, line, 24, "black"))
+            y += LINE[24]
+        summary = wrap(item[2] or "", bw, 18, measure)
+        units.append((ops, y + (0 if summary else 16), False))
+        for i, line in enumerate(summary):
+            y += LINE[18]
+            units.append(([("text", bx, y - LINE[18], line, 18, "gray")],
+                          y + (16 if i == len(summary) - 1 else 0), True))
+    elif kind == "art":
+        units.append(([("art", bx + bw // 2, y + 80, item[1], 120, "black")],
+                      y + 170, False))
+    return units
+
+
 def typeset(block, measure):
-    """-> (ops, used_height). ops: (kind, x, y, payload, size, shade)."""
+    """-> (ops, used_height). ops: (kind, x, y, payload, size, shade).
+
+    Content that would run past the block's bottom is cut at a whole
+    line (running text, ending in '...') or a whole story, never drawn
+    over the next article."""
     bid, bx, by, bw, bh, items = block
     ops = []
     y = by
+    limit = by + bh
+    cut_ok_last = False         # previous kept unit was a cuttable text line
     for item in items:
-        kind = item[0]
-        if kind == "masthead":
-            ops.append(("rule", 0, by + 18, PAPER_W, 2, "black"))
-            ops.append(("text", MARGIN, by + 34, "THE DAILY", 56, "black"))
-            ops.append(("text", MARGIN, by + 100, "PAPER", 56, "black"))
-            ops.append(("text", MARGIN, by + 178, item[1].upper(), 18, "gray"))
-            ox = STEP_X + MARGIN
-            ops.append(("box", ox, by + 42, CELL_W, 64, "black"))
-            ops.append(("text", ox + 16, by + 58, "SAMPLE EDITION", 24, "black"))
-            for i, line in enumerate(wrap("Not live news. Stories and tasks "
-                                          "are sample content.", CELL_W, 18, measure)):
-                ops.append(("text", ox, by + 122 + i * LINE[18], line, 18, "gray"))
-            ox = 2 * STEP_X + MARGIN
-            ops.append(("text", ox, by + 50, "IN THIS EDITION", 18, "gray"))
-            for i, (_, _, title) in enumerate(ROUTE[1:6]):
-                ops.append(("text", ox, by + 78 + i * LINE[18], title, 18, "black"))
-            ops.append(("rule", 0, by + MAST_H - 10, PAPER_W, 2, "black"))
-            ops.append(("rule", 0, by + MAST_H - 4, PAPER_W, 1, "black"))
+        if item[0] == "masthead":
+            ops.extend(_masthead_ops(item, by, measure))
             y = by + MAST_H
             continue
-        if kind == "kicker":
-            for line in wrap(item[1], bw, 18, measure):
-                ops.append(("text", bx, y, line, 18, "gray"))
-                y += LINE[18]
-            ops.append(("rule", bx, y + 2, bw, 1, "light"))
-            y += 14
-        elif kind == "head":
-            size = item[2]
-            for line in wrap(item[1], bw, size, measure):
-                ops.append(("text", bx, y, line, size, "black"))
-                y += LINE[size]
-            y += 8
-        elif kind == "body":
-            for line in wrap(item[1], bw, 24, measure):
-                ops.append(("text", bx, y, line, 24, "black"))
-                y += LINE[24]
-            y += 12
-        elif kind == "small":
-            for line in wrap(item[1], bw, 18, measure):
-                ops.append(("text", bx, y, line, 18, "gray"))
-                y += LINE[18]
-            y += 10
-        elif kind == "bullets":
-            for entry in item[1]:
-                lines = wrap(entry, bw - 22, 24, measure)
-                for i, line in enumerate(lines):
-                    if i == 0:
-                        ops.append(("dot", bx + 5, y + 14, None, 4, "black"))
-                    ops.append(("text", bx + 22, y, line, 24, "black"))
-                    y += LINE[24]
-                y += 6
-            y += 8
-        elif kind == "art":
-            ops.append(("art", bx + bw // 2, y + 80, item[1], 120, "black"))
-            y += 170
+        stop = False
+        for unit_ops, y_after, cut_ok in _units(item, bx, y, bw, measure):
+            bottom = max([o[2] + o[4] for o in unit_ops if o[0] == "text"] or [y_after])
+            if bottom > limit:
+                if ops and ops[-1][0] == "text" and cut_ok_last:
+                    k, x0, y0, text, size, shade = ops[-1]
+                    ops[-1] = (k, x0, y0, _ellipsize(text, bw - (x0 - bx), size, measure),
+                               size, shade)
+                stop = True
+                break
+            ops.extend(unit_ops)
+            y = y_after
+            cut_ok_last = cut_ok
+        if stop:
+            break
+        cut_ok_last = False
     # Column gutter rule on the right edge of each cell (not the last).
     if bid.startswith("c") and bx + bw + 40 < PAPER_W:
         ops.append(("vrule", bx + bw + 15, by, 1, bh, "light"))
-    return ops, y - by
+    return ops, min(y, limit) - by
+
+
+def _ellipsize(text, width, size, measure):
+    words = text.split()
+    while words:
+        cand = " ".join(words) + "..."
+        if measure(cand, size) <= width:
+            return cand
+        words.pop()
+    return "..."
 
 
 # --------------------------------------------------------------------------
@@ -296,8 +431,9 @@ def typeset(block, measure):
 class Paper:
     """An edition plus a typeset cache. One per module open."""
 
-    def __init__(self, blocks):
+    def __init__(self, blocks, titles=None):
         self.blocks = blocks
+        self.titles = tuple(titles or SAMPLE_TITLES)
         self._ops = {}
 
     def ops_for(self, block, measure):
@@ -369,9 +505,10 @@ def render_bar(cv, paper, stop, ox, oy):
     cv.ink("black")
     cv.fill_rect(0, BAR_Y, VIEW_W, 2)
     cv.ink("gray")
-    cv.text(20, BAR_Y + 10, "SAMPLE EDITION  -  %d OF %d" % (stop + 1, len(ROUTE)), 18)
+    label = "TODAY'S EDITION" if paper.titles == NEWS_TITLES else "SAMPLE EDITION"
+    cv.text(20, BAR_Y + 10, "%s  -  %d OF %d" % (label, stop + 1, len(ROUTE)), 18)
     cv.ink("black")
-    cv.text(20, BAR_Y + 36, ROUTE[stop][2], 24)
+    cv.text(20, BAR_Y + 36, paper.titles[stop], 24)
     cv.ink("light")
     cv.text(20, BAR_Y + 70, "< BACK            NEXT >   HOLD: HOME", 18)
     mx, my = VIEW_W - 20 - MAP_W, BAR_Y + 6

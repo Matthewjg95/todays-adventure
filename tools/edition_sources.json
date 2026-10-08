@@ -1,0 +1,7 @@
+[
+ {"section": "top", "name": "NPR", "url": "https://feeds.npr.org/1001/rss.xml", "max": 4},
+ {"section": "world", "name": "BBC News", "url": "https://feeds.bbci.co.uk/news/world/rss.xml", "max": 4},
+ {"section": "tech", "name": "Hacker News", "url": "https://hnrss.org/frontpage", "max": 4, "summary": false},
+ {"section": "tech", "name": "NPR Technology", "url": "https://feeds.npr.org/1019/rss.xml", "max": 2},
+ {"section": "local", "name": "Syracuse.com", "url": "https://www.syracuse.com/arc/outboundfeeds/rss/?outputType=xml", "max": 4}
+]

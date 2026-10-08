@@ -107,6 +107,47 @@ in `config.py` in case the panel disagrees with the portrait rotation.
   task snapshot (a fixture, labelled as such). The weather panel shows only
   cached weather with its update time, or says nothing is cached.
 
+## Daily Paper editions (real news)
+
+```text
+tools/edition_sources.json --> tools/build_edition.py --> edition.json
+   (public RSS/Atom feeds)        (GitHub Actions,          on the `edition`
+                                   3x daily, or any PC)     branch (data only)
+                                                                 |
+   Paper: scheduled update, Wi-Fi already up, battery >= 30% ----+
+          -> edition.py validates, caps, caches edition.json
+   Daily Paper module: reads the cache only (no network while reading)
+```
+
+- **Sources** (`tools/edition_sources.json`): NPR top stories, BBC World,
+  Hacker News + NPR Technology, Syracuse.com local. Edit the file to change them;
+  sections are `top`, `world`, `tech`, `local`.
+- **Builder**: headline and short summary only, HTML stripped, accents folded,
+  duplicates dropped across sections, at most 6 stories per section, 140-character
+  titles, 320-character summaries, 32 KB total. One failing feed is skipped; if
+  all fail nothing is published, so the Paper keeps its previous edition.
+- **Publishing**: `.github/workflows/edition.yml` runs at about 6:17 AM,
+  12:17 PM and 5:17 PM Eastern (GitHub may start scheduled runs late) and on
+  demand (Actions -> Daily Paper edition -> Run workflow). It force-replaces the
+  single commit on the `edition` branch; desktop CI ignores that branch.
+  Scheduled workflows only run from the default branch, so this starts after
+  merge to master.
+- **Device**: `main._maybe_edition()` runs after a completed scheduled render,
+  before the OTA check, only if the cached edition is older than
+  `EDITION_MAX_AGE_HOURS` (3). Every field is validated again on the Paper; a bad,
+  oversized or older download never replaces the cache. Failures are logged as
+  `edition fetch failed` and do not affect the adventure screen.
+  `EDITION_URL = None` disables downloads.
+- **Layout**: the same fixed grid and route. Top story (lead), More top stories,
+  World (lead + briefs), Technology and Local fill the news cells; priorities,
+  notes, waiting/later and adventure & weather stay local. Text that does not fit
+  is cut at a whole line with "..." or a whole headline; it never runs into the
+  next article. The masthead says TODAY'S EDITION with its time, OLDER EDITION
+  after 36 hours without a newer one, and SAMPLE EDITION when nothing has been
+  downloaded yet.
+- Feed text is shown as headline + summary with the source name; full stories
+  remain at the source.
+
 ## Notebook storage
 
 - `notes/nNNNN.json`, format `ta-notebook/1`: strokes in order, each with its
@@ -130,10 +171,11 @@ status. The master is `tasks_fixture.json` for now.
 ## Desktop verification (done)
 
 ```text
-python -m unittest discover tests -v        # 131 tests
+python -m unittest discover tests -v        # 151 tests
 python tools/verify_ota_manifest.py --pending
 python main.py --demo
-python tools/preview.py                      # PNG frames into preview/
+python tools/preview.py [--edition edition.json]  # PNG frames into preview/
+python tools/build_edition.py edition.json   # build a real edition locally
 micropython tools/mp_smoke.py <repo> <empty-dir>   # optional, unix port
 ```
 

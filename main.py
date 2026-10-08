@@ -152,6 +152,27 @@ def _maybe_ota():
         log_wake("OTA check failed: %r" % (e,))
 
 
+def _maybe_edition():
+    """Download the Daily Paper edition on a scheduled update, while the
+    radio is already up. Same battery gate as OTA. A failure keeps the
+    previous edition and never affects the adventure screen."""
+    url = getattr(config, "EDITION_URL", None)
+    if not url:
+        return
+    b = battery_info()
+    if b and not b["charging"] and b["pct"] < 30:
+        return
+    try:
+        import edition
+        if not edition.needs_refresh(max_age=getattr(config, "EDITION_MAX_AGE_HOURS", 3) * 3600):
+            return
+        ed = edition.fetch_and_store(url)
+        log_wake("edition %s: %d stories" % (
+            ed["id"], sum(len(v) for v in ed["sections"].values())))
+    except Exception as e:
+        log_wake("edition fetch failed: %r" % (e,))
+
+
 def wifi_off():
     """Shut the radio down the moment we're done with it.
 
@@ -540,7 +561,10 @@ def scheduled_cycle(button_wake=False):
             _save_schedule(state)
             log_wake("slot=%s completed duration=%ds" %
                      (slot, int(time.time() - started)))
-            # Already connected. Claim/completion survives the OTA reset.
+            # Already connected: pick up the Daily Paper edition, then OTA.
+            # Claim/completion survives the OTA reset.
+            _stage("edition")
+            _maybe_edition()
             _stage("ota")
             _maybe_ota()
         elif button_wake:

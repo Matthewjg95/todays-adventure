@@ -21,12 +21,11 @@ playful, some genuinely useful — an umbrella warning built from
 tomorrow's forecast, a frost alert for the plants.
 
 Press the side wheel and a Home launcher opens with four modules:
-Today's Adventure (back to the fridge cycle), a Daily Paper explored
-through a movable window, a handwriting Notebook, and the Weather
+Today's Adventure (back to the fridge cycle), a Daily Paper of the
+day's headlines explored through a movable window, a handwriting Notebook, and the Weather
 Flashcard. Hold the side wheel anywhere to return Home; leave it alone
 and it saves and goes back to the fridge. See
-[interactive modules](docs/INTERACTIVE_MODULES.md) — a prototype on a
-feature branch, not yet released over OTA.
+[interactive modules](docs/INTERACTIVE_MODULES.md).
 
 ## Architecture
 
@@ -48,6 +47,7 @@ feature branch, not yet released over OTA.
 | `home_app.py` / `screens.py` | Hardware-free controller and layouts: Home launcher, global hold-to-Home, module state |
 | `input_events.py` | Pure press/hold and tap/stroke state machines |
 | `newspaper.py` | Fixed large newspaper layout, reading route, viewport rendering, minimap |
+| `edition.py` / `tools/build_edition.py` | Daily Paper editions: companion builds them from news feeds (GitHub Actions → `edition` branch); the Paper validates and caches them at scheduled updates |
 | `notebook.py` | Stroke capture, atomic note storage, export bundle + PBM render |
 | `tasks.py` | One task master snapshot (fixture for now); proposals never change status |
 

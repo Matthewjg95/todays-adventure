@@ -37,7 +37,8 @@ class Env:
 
     def __init__(self, store=None, tasks=None, state_path=STATE_FILE,
                  weather=None, refresh_weather=None, date_str=None,
-                 wall_time=None, idle_ms=180000, pan_frames=0, log=None):
+                 wall_time=None, idle_ms=180000, pan_frames=0, log=None,
+                 edition=None):
         self.store = store or notebook.NotebookStore()
         self.tasks = tasks
         self.state_path = state_path
@@ -48,6 +49,8 @@ class Env:
         self.idle_ms = idle_ms
         self.pan_frames = pan_frames
         self.log = log or (lambda msg: None)
+        # -> (sections, label, stale) for a downloaded edition, or None
+        self.edition = edition or (lambda: None)
 
 
 def load_state(path):
@@ -213,8 +216,17 @@ class App:
         notes = []
         for nid in self.env.store.list_ids()[-6:]:
             notes.append("Note %s" % nid.upper())
+        news = label = None
+        stale = False
+        try:
+            got = self.env.edition()
+            if got:
+                news, label, stale = got
+        except Exception as e:
+            self.env.log("edition unavailable: %r" % (e,))
         self.paper = newspaper.Paper(newspaper.build_edition(
-            snapshot, ctx, wonder_text, adventure, notes, self.env.date_str()))
+            snapshot, ctx, wonder_text, adventure, notes, self.env.date_str(),
+            news, label, stale), newspaper.route_titles(news))
         self.stop = newspaper.clamp_stop(self.state.get("paper_stop", self.stop))
         view = self.state.get("paper_view")
         if isinstance(view, list) and len(view) == 2:

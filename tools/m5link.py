@@ -61,7 +61,7 @@ class Link:
             "'recommendation_engine','scheduler','wifi_secrets',"
             "'wake_plan','adventures','events','ota','input_events',"
             "'device_io','home_app','screens','newspaper','notebook',"
-            "'tasks','session'):\n"
+            "'tasks','session','edition'):\n"
             "    sys.modules.pop(_m, None)\n", quiet=True)
 
     def _interrupt(self):

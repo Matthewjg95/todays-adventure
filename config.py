@@ -72,6 +72,14 @@ TOUCH_SWAP_XY = False           # GT911 orientation fixes, if the panel
 TOUCH_FLIP_X = False            # rotation and touch disagree
 TOUCH_FLIP_Y = False
 
+# --- Daily Paper edition ----------------------------------------------------
+# Built from public news feeds by tools/build_edition.py (GitHub Actions,
+# .github/workflows/edition.yml) and published to the `edition` branch.
+# Downloaded only at scheduled updates; None disables it (sample edition).
+EDITION_URL = ("https://raw.githubusercontent.com/"
+               "Matthewjg95/todays-adventure/edition/edition.json")
+EDITION_MAX_AGE_HOURS = 3       # skip the download if the cached one is newer
+
 # --- Weather API (Open-Meteo: free, no API key) ---------------------------
 WEATHER_URL = (
     "http://api.open-meteo.com/v1/forecast"

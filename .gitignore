@@ -8,6 +8,8 @@ schedule_state.json
 schedule_state.json.tmp
 user_settings.json
 app_state.json
+edition.json
+edition.json.tmp
 app_state.json.tmp
 task_proposals.json
 notes/
