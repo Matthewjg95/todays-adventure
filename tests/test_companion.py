@@ -104,23 +104,50 @@ class TestPaper(Harness):
         self.assertEqual(self.app.stop, 0)
         self.app.button(ie.PRESS)
         self.assertEqual(self.app.stop, 1)
-        self.app.rocker(+1)
+        self.app.rocker(+1, 1000)
         self.assertEqual(self.app.stop, 2)
-        self.app.rocker(-1)
+        self.app.rocker(-1, 2000)
         self.assertEqual(self.app.stop, 1)
         self.app.button(ie.HOLD)                # Home, not "next"
         self.assertEqual(self.app.module, "home")
         self.assertEqual(self.app.stop, 1)
 
-    def test_taps_turn_and_ends_clamp(self):
+    def test_wheel_reads_down_and_taps_go_sideways(self):
         self.open_module(1)
-        self.tap(100, 400)
+        self.app.rocker(-1, 0)
         self.assertEqual(self.app.stop, 0)
         self.assertEqual(self.app.status, "FRONT PAGE")
-        for _ in range(20):
-            self.tap(400, 400)
+        self.app.rocker(+1, 1000)                 # down: same column, next row
+        self.assertEqual(newspaper.ROUTE[self.app.stop][:2], (0, 1))
+        self.tap(400, 400)                        # right side: next column
+        self.assertEqual(newspaper.ROUTE[self.app.stop][:2], (1, 1))
+        self.app.rocker(-1, 2000)                 # up: straight up
+        self.assertEqual(newspaper.ROUTE[self.app.stop][:2], (1, 0))
+        self.tap(100, 400)
+        self.tap(100, 400)                        # left edge
+        self.assertEqual(newspaper.ROUTE[self.app.stop][:2], (0, 0))
+        self.assertEqual(self.app.status, "LEFT EDGE OF THE PAGE")
+        for t in range(20):
+            self.app.rocker(+1, 3000 + t * 1000)
         self.assertEqual(self.app.stop, len(newspaper.ROUTE) - 1)
         self.assertEqual(self.app.status, "END OF EDITION")
+
+    def test_up_from_any_lower_stop_goes_straight_up(self):
+        self.open_module(1)
+        for i, (col, row, _) in enumerate(newspaper.ROUTE):
+            if row == 0:
+                continue
+            self.app.stop = i
+            self.app.rocker(-1, 10000 * (i + 1))
+            self.assertEqual(newspaper.ROUTE[self.app.stop][:2], (col, row - 1), i)
+
+    def test_rocker_bounce_is_one_step(self):
+        self.open_module(1)
+        for t in (1000, 1040, 1090, 1180):        # one rock chattering
+            self.app.rocker(+1, t)
+        self.assertEqual(self.app.stop, 1)
+        self.app.rocker(+1, 1500)                 # a deliberate second rock
+        self.assertEqual(self.app.stop, 2)
 
     def test_viewport_resumes_after_leaving_and_after_restart(self):
         self.open_module(1)

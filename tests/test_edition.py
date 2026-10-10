@@ -215,7 +215,7 @@ class TestPaperWithNews(unittest.TestCase):
     def test_missing_section_says_so(self):
         ed = sample_edition()
         del ed["sections"]["local"]
-        cell = dict((b[0], b[5]) for b in self.blocks(ed))["c22"]
+        cell = dict((b[0], b[5]) for b in self.blocks(ed))["c21"]
         self.assertTrue(any("No local stories" in i[1] for i in cell if i[0] == "small"))
 
 

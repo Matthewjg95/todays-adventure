@@ -32,18 +32,37 @@ MAST_H = 240                        # masthead band on row 0
 
 LINE = {18: 26, 24: 34, 40: 50, 56: 64}
 
-# Serpentine reading route: (col, row, title)
+# Reading route: down each column, then the top of the next column, like
+# a printed newspaper. The wheel (up/down) and a short press walk this
+# route, so "down" always moves down the page within a column; tapping
+# the left/right side moves sideways to the neighbouring column.
+# (col, row, sample-edition title)
 ROUTE = (
     (0, 0, "Front page"),
-    (1, 0, "Engineering"),
-    (2, 0, "Project desk"),
-    (2, 1, "Adventure & weather"),
-    (1, 1, "Engineering, continued"),
-    (0, 1, "Notes"),
+    (0, 1, "Adventure & weather"),
     (0, 2, "Waiting & later"),
-    (1, 2, "Field sketch"),
-    (2, 2, "About this edition"),
+    (1, 0, "Engineering"),
+    (1, 1, "Engineering, continued"),
+    (1, 2, "Project desk"),
+    (2, 0, "Field sketch"),
+    (2, 1, "About this edition"),
+    (2, 2, "Notes"),
 )
+
+
+def stop_at(col, row):
+    for i, (c, r, _) in enumerate(ROUTE):
+        if (c, r) == (col, row):
+            return i
+    return None
+
+
+def sideways(index, direction):
+    """Stop in the neighbouring column on the same row, or None at an edge."""
+    col, row, _ = ROUTE[clamp_stop(index)]
+    if not 0 <= col + direction < COLS:
+        return None
+    return stop_at(col + direction, row)
 
 
 def stop_origin(index):
@@ -140,9 +159,9 @@ def _weather_items(ctx, wonder_text, adventure):
 
 
 SAMPLE_TITLES = tuple(t for _, _, t in ROUTE)
-NEWS_TITLES = ("Front page", "Top story", "More top stories",
-               "Adventure & weather", "World", "Notes", "Waiting & later",
-               "Technology", "Local")
+NEWS_TITLES = ("Front page", "Adventure & weather", "Waiting & later",
+               "Top story", "More top stories", "World",
+               "Technology", "Local", "Notes")
 SECTION_NAMES = {"top": "TOP STORIES", "world": "WORLD", "tech": "TECHNOLOGY",
                  "local": "LOCAL"}
 
@@ -212,8 +231,8 @@ def build_edition(snapshot=None, ctx=None, wonder_text=None, adventure=None,
                  ("bullets", _task_lines(snapshot, ("active", "next"))),
                  ("small", "Read from one task master snapshot. The Paper "
                            "never changes a task's status.")],
-        (2, 1): _weather_items(ctx, wonder_text, adventure),
-        (0, 1): [("kicker", "NOTES - FROM THIS PAPER'S NOTEBOOK"),
+        (0, 1): _weather_items(ctx, wonder_text, adventure),
+        (2, 2): [("kicker", "NOTES - FROM THIS PAPER'S NOTEBOOK"),
                  ("head", "Your pages", 40),
                  ("bullets", notes[:6] or ["No saved notes yet."]),
                  ("small", "Handwriting stays local. Transcription is a "
@@ -224,12 +243,12 @@ def build_edition(snapshot=None, ctx=None, wonder_text=None, adventure=None,
     }
     if news:
         cells[(1, 0)] = _news_cell(news, "top", lead=True, count=1)
-        cells[(2, 0)] = _news_cell(news, "top", skip=1)
-        cells[(1, 1)] = _news_cell(news, "world", lead=True)
-        cells[(1, 2)] = _news_cell(news, "tech")
-        cells[(2, 2)] = _news_cell(news, "local")
+        cells[(1, 1)] = _news_cell(news, "top", skip=1)
+        cells[(1, 2)] = _news_cell(news, "world", lead=True)
+        cells[(2, 0)] = _news_cell(news, "tech")
+        cells[(2, 1)] = _news_cell(news, "local")
         if len(news.get("top") or []) < 2:
-            cells[(2, 0)] = [("kicker", "MORE TOP STORIES"),
+            cells[(1, 1)] = [("kicker", "MORE TOP STORIES"),
                              ("small", "Only one top story in this edition.")]
     else:
         cells.update(_SAMPLE_CELLS)
@@ -246,13 +265,7 @@ _SAMPLE_CELLS = {
                       "A Home hold stays shorter than that power-on "
                       "press, and the press that woke the board never "
                       "counts: the button is ignored until released."),
-             ("small", "Continued below, two stops on.")],
-    (2, 0): [("kicker", "PROJECT DESK - SAMPLE"),
-             ("head", "A fridge companion grows a home screen", 40),
-             ("body", "Four modules now share one launcher: the "
-                      "adventure, this paper, a notebook and the "
-                      "weather card. Hold the side button anywhere "
-                      "to come home.")],
+             ("small", "Continued below.")],
     (1, 1): [("kicker", "ENGINEERING, CONTINUED"),
              ("head", "Ink first, pixels later", 40),
              ("body", "Pen points are stored the moment they arrive, "
@@ -260,19 +273,25 @@ _SAMPLE_CELLS = {
                       "can delay the picture, but it cannot drop the "
                       "stroke. Saving writes a temporary file and "
                       "renames it, after checking free flash.")],
-    (1, 2): [("kicker", "FIELD SKETCH"),
+    (1, 2): [("kicker", "PROJECT DESK - SAMPLE"),
+             ("head", "A fridge companion grows a home screen", 40),
+             ("body", "Four modules now share one launcher: the "
+                      "adventure, this paper, a notebook and the "
+                      "weather card. Hold the side button anywhere "
+                      "to come home.")],
+    (2, 0): [("kicker", "FIELD SKETCH"),
              ("art", "partly"),
              ("head", "Look up once today", 40),
              ("body", "An illustration slot. Future editions can carry "
                       "the day's scene here.")],
-    (2, 2): [("kicker", "ABOUT THIS EDITION"),
+    (2, 1): [("kicker", "ABOUT THIS EDITION"),
              ("head", "Sample edition", 40),
              ("body", "Stories and tasks here are samples, not live "
                       "information. A real edition replaces this once the "
                       "Paper downloads one at a scheduled update."),
-             ("small", "Next: short press, wheel or tap the right half. "
-                       "Back: wheel or tap the left half. Hold the side "
-                       "button for Home.")],
+             ("small", "Wheel down or short press: read on, down each "
+                       "column. Wheel up: back. Tap the left or right "
+                       "side: move sideways. Hold the side button: Home.")],
 }
 
 
@@ -498,6 +517,9 @@ MAP_SCALE = 28
 MAP_W, MAP_H = PAPER_W // MAP_SCALE, PAPER_H // MAP_SCALE     # 52 x 85
 
 
+BAR_HINT = "WHEEL: UP/DOWN   TAP SIDES: ACROSS"
+
+
 def render_bar(cv, paper, stop, ox, oy):
     """Bottom chrome: position, stop title, hints and the map."""
     cv.ink("white")
@@ -510,7 +532,7 @@ def render_bar(cv, paper, stop, ox, oy):
     cv.ink("black")
     cv.text(20, BAR_Y + 36, paper.titles[stop], 24)
     cv.ink("light")
-    cv.text(20, BAR_Y + 70, "< BACK            NEXT >   HOLD: HOME", 18)
+    cv.text(20, BAR_Y + 70, BAR_HINT, 18)
     mx, my = VIEW_W - 20 - MAP_W, BAR_Y + 6
     cv.ink("light")
     for (x, y, w, h) in paper.minimap_rects(mx, my, MAP_SCALE):

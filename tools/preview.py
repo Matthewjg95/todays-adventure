@@ -221,17 +221,17 @@ def run(outdir):
         x, y, w, h = screens.tile_rect(1)
         rig.tap(x + w // 2, y + h // 2)                 # Daily Paper
         rig.snap("paper_front_page")
-        rig.hold_side(200)                              # short press: next
-        rig.snap("paper_engineering")
-        rig.app.rocker(+1, rig.t)
+        rig.hold_side(200)                              # short press: down
+        rig.snap("paper_down_weather")
+        rig.app.rocker(+1, rig.t)                       # wheel down
         rig.draw()
-        rig.snap("paper_project_desk")
-        rig.tap(400, 500)                               # tap right half: next
-        rig.snap("paper_adventure_weather")
-        rig.tap(100, 500)                               # tap left half: back
-        rig.tap(400, 500)
-        rig.tap(400, 500)
-        rig.snap("paper_engineering_continued")
+        rig.snap("paper_down_waiting")
+        rig.tap(400, 500)                               # tap right side: across
+        rig.snap("paper_across_next_column")
+        rig.step(400)
+        rig.app.rocker(-1, rig.t)                       # wheel up: straight up
+        rig.draw()
+        rig.snap("paper_up_same_column")
         assert rig.app.stop == 4, rig.app.stop
         rig.hold_side(1200)                             # hold: Home
         rig.snap("home_after_hold")

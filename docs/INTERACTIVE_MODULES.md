@@ -107,6 +107,26 @@ in `config.py` in case the panel disagrees with the portrait rotation.
   task snapshot (a fixture, labelled as such). The weather panel shows only
   cached weather with its update time, or says nothing is cached.
 
+## Paper navigation (revised October 10 after device testing)
+
+Field report on 0648514: wheel "up" from stop 7 ended up at stop 4. The old
+route snaked across rows (1-2-3, then 6-5-4, then 7-8-9), so after one step up
+the wheel moved sideways along the middle row. The route now reads **down each
+column** like a printed newspaper, then continues at the top of the next column:
+
+| Input | Paper |
+|---|---|
+| Wheel down / short press | next: down the column; at its foot, top of the next column |
+| Wheel up | back: straight up; at a column's top, foot of the previous column |
+| Tap right / left side | sideways to the neighbouring column, same row |
+| Hold | Home |
+
+Column 1 is your day (priorities, adventure & weather, waiting & later), column 2
+the news (top story, more top stories, world), column 3 technology, local and
+notes. Rocker steps closer than 250 ms (`home_app.ROCKER_GUARD_MS`) are treated
+as switch bounce and ignored. Wheel direction itself was confirmed correct
+(up = back).
+
 ## Daily Paper editions (real news)
 
 ```text
@@ -171,7 +191,7 @@ status. The master is `tasks_fixture.json` for now.
 ## Desktop verification (done)
 
 ```text
-python -m unittest discover tests -v        # 151 tests
+python -m unittest discover tests -v        # 154 tests
 python tools/verify_ota_manifest.py --pending
 python main.py --demo
 python tools/preview.py [--edition edition.json]  # PNG frames into preview/

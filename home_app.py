@@ -29,6 +29,7 @@ import notebook
 import screens
 
 STATE_FILE = "app_state.json"
+ROCKER_GUARD_MS = 250
 MODULES = ("home", "paper", "notebook", "weather")
 
 
@@ -100,6 +101,7 @@ class App:
         self.confirming = False
         self.weather_ctx = None
         self._footer_says_saved = False
+        self._last_rocker = None
 
     # --- lifecycle -------------------------------------------------------
     def open(self, now_ms=0):
@@ -173,6 +175,14 @@ class App:
             self._refresh_weather()
 
     def rocker(self, direction, now_ms=None):
+        # One physical rock can chatter into several clean presses; a step
+        # closer than ROCKER_GUARD_MS to the previous one is contact bounce,
+        # not intent (a page turn takes about a second to show anyway).
+        if now_ms is not None and self._last_rocker is not None \
+                and now_ms - self._last_rocker < ROCKER_GUARD_MS:
+            return
+        if now_ms is not None:
+            self._last_rocker = now_ms
         self._touched(now_ms)
         if self.module == "paper":
             self.turn(direction)
@@ -188,7 +198,7 @@ class App:
                     self.go(target)
         elif self.module == "paper":
             if kind == ie.TAP:
-                self.turn(+1 if x >= screens.W // 2 else -1)
+                self.slide(+1 if x >= screens.W // 2 else -1)
         elif self.module == "notebook":
             self._note_touch(kind, x, y, event[3])
         elif self.module == "weather":
@@ -244,6 +254,18 @@ class App:
             self.status = "END OF EDITION" if direction > 0 else "FRONT PAGE"
             self.needs_frame = True
             return
+        self._go_stop(target)
+
+    def slide(self, direction):
+        """Sideways to the neighbouring column, same row."""
+        target = newspaper.sideways(self.stop, direction)
+        if target is None:
+            self.status = "RIGHT EDGE OF THE PAGE" if direction > 0 else "LEFT EDGE OF THE PAGE"
+            self.needs_frame = True
+            return
+        self._go_stop(target)
+
+    def _go_stop(self, target):
         a = self.origin()
         self.stop = target
         self.status = None

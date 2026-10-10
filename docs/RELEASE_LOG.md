@@ -1,6 +1,13 @@
 # Release and change record
 
-## October 8, 2026 — real Daily Paper editions (branch feature/daily-paper-edition)
+## October 10, 2026 — real Daily Paper editions and column navigation
+
+Released at the owner's request together with a navigation fix from device
+testing: the newspaper route now reads down columns (wheel up/down stays in a
+column; side taps move across), and rocker bounce under 250 ms is ignored.
+154 desktop tests; device modules pass under the MicroPython unix port.
+
+### October 8 — branch notes
 
 Owner reported the 0648514 interactive modules working on the Paper (hold
 timing, wheel direction, page turns and ink all acceptable). This branch replaces

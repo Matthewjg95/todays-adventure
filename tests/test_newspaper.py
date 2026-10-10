@@ -38,13 +38,31 @@ class TestGeometry(unittest.TestCase):
         cells = [(c, r) for c, r, _ in np.ROUTE]
         self.assertEqual(len(set(cells)), np.COLS * np.ROWS)
 
-    def test_consecutive_stops_overlap_for_orientation(self):
+    def test_wheel_route_reads_down_each_column(self):
+        # Field report: from stop 7, "up" went sideways along a row (the
+        # old serpentine route). Up/down must move vertically within a
+        # column and only jump at a column's end.
         for i in range(len(np.ROUTE) - 1):
-            a, b = np.stop_origin(i), np.stop_origin(i + 1)
-            shared = np.overlap(a, b)
-            # at least an 80 px shared band in the direction of travel
-            self.assertGreaterEqual(shared, 80 * np.VIEW_W, (i, a, b))
-            self.assertLess(shared, np.VIEW_W * np.VIEW_H)  # it does move
+            (c0, r0, _), (c1, r1, _) = np.ROUTE[i], np.ROUTE[i + 1]
+            if r0 < np.ROWS - 1:
+                self.assertEqual((c1, r1), (c0, r0 + 1), i)
+            else:
+                self.assertEqual((c1, r1), (c0 + 1, 0), i)
+
+    def test_vertical_and_sideways_steps_overlap(self):
+        for i in range(len(np.ROUTE) - 1):
+            if np.ROUTE[i][0] == np.ROUTE[i + 1][0]:
+                shared = np.overlap(np.stop_origin(i), np.stop_origin(i + 1))
+                self.assertGreaterEqual(shared, 100 * np.VIEW_W, i)
+        for i in range(len(np.ROUTE)):
+            j = np.sideways(i, +1)
+            if j is not None:
+                self.assertEqual(np.ROUTE[j][1], np.ROUTE[i][1])
+                self.assertGreaterEqual(np.overlap(np.stop_origin(i), np.stop_origin(j)),
+                                        80 * np.VIEW_H)
+                self.assertEqual(np.sideways(j, -1), i)
+        self.assertIsNone(np.sideways(0, -1))
+        self.assertIsNone(np.sideways(len(np.ROUTE) - 1, +1))
 
     def test_clamps(self):
         self.assertEqual(np.clamp_view(-50, 99999),
@@ -127,7 +145,7 @@ class TestRender(unittest.TestCase):
 
     def test_no_weather_is_never_invented(self):
         blocks = dict((b[0], b[5]) for b in edition(ctx=None))
-        heads = [i[1] for i in blocks["c21"] if i[0] == "head"]
+        heads = [i[1] for i in blocks["c01"] if i[0] == "head"]
         self.assertEqual(heads, ["No weather cached yet"])
 
 
