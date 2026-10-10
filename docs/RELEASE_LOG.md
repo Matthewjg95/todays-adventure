@@ -1,5 +1,15 @@
 # Release and change record
 
+## October 10, 2026 — two editions a day; AI pipelines built, switched off
+
+The edition workflow now publishes twice daily (about 6:17 AM and 5:17 PM
+Eastern in summer). The Gemini editing pass (tools/gemini_editor.py) and the
+notes pipeline (notes_sync.py + companion/notes_apps_script/Code.gs) are built
+and desktop-tested but disabled: Gemini needs the GEMINI_EDITION variable and
+a GEMINI_API_KEY secret; notes_sync is not imported, not in the OTA payload and
+not hooked into main.py. No firmware payload changed; OTA stays at 90e7acd.
+See docs/AI_PIPELINES.md.
+
 ## October 10, 2026 — real Daily Paper editions and column navigation
 
 Released at the owner's request together with a navigation fix from device

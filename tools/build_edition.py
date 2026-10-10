@@ -1,6 +1,7 @@
 """Companion: build the Daily Paper edition from public news feeds.
 
     python tools/build_edition.py [out.json] [--sources tools/edition_sources.json]
+                                  [--gemini]   (optional; needs GEMINI_API_KEY)
 
 Runs on a computer or on GitHub Actions (.github/workflows/edition.yml),
 never on the Paper. Fetches each RSS/Atom feed in edition_sources.json,
@@ -126,6 +127,9 @@ def main(argv):
     out = "edition.json"
     src_path = os.path.join(ROOT, "tools", "edition_sources.json")
     args = list(argv)
+    use_gemini = "--gemini" in args
+    if use_gemini:
+        args.remove("--gemini")
     if "--sources" in args:
         i = args.index("--sources")
         src_path = args[i + 1]
@@ -135,6 +139,13 @@ def main(argv):
     with open(src_path) as f:
         sources = json.load(f)
     data = build(sources, http_fetch)
+    if use_gemini:
+        key = os.environ.get("GEMINI_API_KEY", "")
+        if key:
+            import gemini_editor
+            data = gemini_editor.edit(data, key, os.environ.get("GEMINI_MODEL") or None)
+        else:
+            print("gemini: no GEMINI_API_KEY; publishing the feed edition")
     with open(out, "w") as f:
         json.dump(data, f, separators=(",", ":"))
     print("edition %s: %s -> %s" % (data["id"], {k: len(v) for k, v in data["sections"].items()}, out))

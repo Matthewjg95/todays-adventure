@@ -5,9 +5,9 @@ name: Daily Paper edition
 # master and OTA: this never changes firmware.
 on:
   schedule:
-    - cron: '17 10 * * *'   # ~6:17 AM US Eastern (daylight time)
-    - cron: '17 16 * * *'   # ~12:17 PM
-    - cron: '17 21 * * *'   # ~5:17 PM
+    # Two editions a day. UTC; Eastern is UTC-4 in summer, UTC-5 in winter.
+    - cron: '17 10 * * *'   # morning: ~6:17 AM EDT / 5:17 AM EST
+    - cron: '17 21 * * *'   # evening: ~5:17 PM EDT / 4:17 PM EST
   workflow_dispatch:
 permissions:
   contents: write
@@ -23,7 +23,17 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install 'requests>=2.31,<3'
-      - run: python tools/build_edition.py "$RUNNER_TEMP/edition.json"
+      - name: Build the edition (Gemini pass only when switched on)
+        env:
+          # Off unless the repository variable GEMINI_EDITION is "on" AND the
+          # secret GEMINI_API_KEY exists. See docs/AI_PIPELINES.md.
+          GEMINI_EDITION: ${{ vars.GEMINI_EDITION }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          extra=""
+          if [ "$GEMINI_EDITION" = "on" ] && [ -n "$GEMINI_API_KEY" ]; then extra="--gemini"; fi
+          python tools/build_edition.py "$RUNNER_TEMP/edition.json" $extra
       - name: Publish to the edition branch (single commit, replaced each run)
         env:
           GH_TOKEN: ${{ github.token }}

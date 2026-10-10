@@ -132,7 +132,7 @@ as switch bounce and ignored. Wheel direction itself was confirmed correct
 ```text
 tools/edition_sources.json --> tools/build_edition.py --> edition.json
    (public RSS/Atom feeds)        (GitHub Actions,          on the `edition`
-                                   3x daily, or any PC)     branch (data only)
+                                   2x daily, or any PC)     branch (data only)
                                                                  |
    Paper: scheduled update, Wi-Fi already up, battery >= 30% ----+
           -> edition.py validates, caps, caches edition.json
@@ -146,8 +146,9 @@ tools/edition_sources.json --> tools/build_edition.py --> edition.json
   duplicates dropped across sections, at most 6 stories per section, 140-character
   titles, 320-character summaries, 32 KB total. One failing feed is skipped; if
   all fail nothing is published, so the Paper keeps its previous edition.
-- **Publishing**: `.github/workflows/edition.yml` runs at about 6:17 AM,
-  12:17 PM and 5:17 PM Eastern (GitHub may start scheduled runs late) and on
+- **Publishing**: `.github/workflows/edition.yml` publishes two editions a
+  day, about 6:17 AM and 5:17 PM Eastern in summer (5:17 AM / 4:17 PM in
+  winter; GitHub may start scheduled runs late), and on
   demand (Actions -> Daily Paper edition -> Run workflow). It force-replaces the
   single commit on the `edition` branch; desktop CI ignores that branch.
   Scheduled workflows only run from the default branch, so this starts after
@@ -167,6 +168,8 @@ tools/edition_sources.json --> tools/build_edition.py --> edition.json
   downloaded yet.
 - Feed text is shown as headline + summary with the source name; full stories
   remain at the source.
+- An optional Gemini editing pass is built but switched off; see
+  [AI pipelines](AI_PIPELINES.md).
 
 ## Notebook storage
 

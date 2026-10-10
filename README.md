@@ -48,6 +48,7 @@ and it saves and goes back to the fridge. See
 | `input_events.py` | Pure press/hold and tap/stroke state machines |
 | `newspaper.py` | Fixed large newspaper layout, reading route, viewport rendering, minimap |
 | `edition.py` / `tools/build_edition.py` | Daily Paper editions: companion builds them from news feeds (GitHub Actions → `edition` branch); the Paper validates and caches them at scheduled updates |
+| `tools/gemini_editor.py`, `notes_sync.py`, `companion/notes_apps_script/` | Optional AI pipelines, built and switched off: Gemini edition editing; notes to your Google Drive with Gemini transcription ([AI pipelines](docs/AI_PIPELINES.md)) |
 | `notebook.py` | Stroke capture, atomic note storage, export bundle + PBM render |
 | `tasks.py` | One task master snapshot (fixture for now); proposals never change status |
 
