@@ -2,13 +2,14 @@
  "files": {
   "adventures.py": "bdc4478d4f6743b156835e48ce2bacd371f6c0ad7460d51d0652d854734dac12",
   "artwork.py": "c2fe7f959d7e1d3c71a5e5a25f908e09cb3b60c84eba1a145e5b64e01ca3915b",
-  "config.py": "0b42569d12937412d07fa78720dae410e3ffb8433c2ac7f965661ee54af42356",
+  "config.py": "1127cd02053c583e78e0cd4ab28cea75a7555dfdcb1aa29fc322f2ebcabe9635",
   "device_io.py": "c320cdda5eb392f5fc9dbfdbe6655b40e30d22fb2296394ba6bf6860fb9a7759",
+  "edition.py": "10924a5bb4e038978ab2ab94da2a577b7ab9b24cdd77a74cc45b343f8196b86d",
   "events.py": "b7fa4339dbafc6c022aa05f7cd458949808a010c45c164c076f5117e42eb0a65",
-  "home_app.py": "0388cd51e138e30f09bd103e6a97deeff62fe2dd62db1ca3fd60fc5d6d46621d",
+  "home_app.py": "93031db69e1646f3e28d9d5545ac8134661eb7e2151045434fc763cd3becb05a",
   "input_events.py": "0473522a8f7461cdcb0593ce432a36075705c7530694207687f6d697bc8ca115",
-  "main.py": "6bb2afd721da4b6f1c1ec4653d772bcf4fa71d4ed78273bcd26eba7616b2016b",
-  "newspaper.py": "4965fe1ace0bcf9d04e93296b054901d6683a5366fcdcbc1ae9ab585b1afd8cc",
+  "main.py": "44216d1841f595934ec3e758a564ad4b534bf22320d2a498c6575556d7a8ec4e",
+  "newspaper.py": "ded67bc449d06a1ccac5177920c14c8cc775d45e33740290cae5af9c0b10ab4e",
   "notebook.py": "c81f5b20ea8efa7374be0745f28a9a615c6d53fd9a8bee141bdf9e24edd64a65",
   "ota.py": "4b21f98e63a672e3f8b1c579df86fed745e9076f8b79d4c70f8586d324db019e",
   "recommendation_engine.py": "8831f1a4f58a53a3cd001c7eb1af9fca0c086c7d649faf33af9bd6c164a072e4",
@@ -28,7 +29,7 @@
   "scheduler.py": "ef22778034f7a16d37f06c128153208a36e15fa29da17d9f1c7e938c86a1f215",
   "scoring_engine.py": "14494099cb54aa3a6e1a3347486f4347315360aabb71bb6b0a9c1bd83869da5c",
   "screens.py": "a523f94afe8c0ebb2b4942239076ffbf6c78dfcf801fe47f8623f1728e0837cf",
-  "session.py": "05a4f2a38f81a86a35cbfde11166346a423ea59548ac93c6214702090c45c829",
+  "session.py": "e2222295471e473e2a3a65d860162361fb472b4210ccf49c436dbd1f349419cd",
   "tasks.py": "18fb9441ba4cb474471ca042d6dcb462a1f9abb6ccfb101b87f984e8616776e2",
   "tasks_fixture.json": "4e4db18c69aa18303efc37097096c2eaa2189c062ef483b29e6540b8c79a9922",
   "ui_renderer.py": "2af600a48ced67b89d1eafcb25658a1d18a79036ac5133ce8bbb075f0119153c",
@@ -36,5 +37,5 @@
   "weather_service.py": "c1bf42487e8c65302b8effa9e1a72dd5dde9ec5401b77d41c56c6e982f44afaf",
   "wonder_engine.py": "4fae3e61497651beb36c4b11aff2a20b437021d01e225ab9b14c07555542c3fc"
  },
- "version": "0648514"
+ "version": "90e7acd"
 }
