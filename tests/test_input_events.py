@@ -61,6 +61,11 @@ class TestButton(unittest.TestCase):
         self.assertEqual(ie.clamp_hold_ms(50), ie.HOLD_MIN_MS)
         self.assertEqual(ie.clamp_hold_ms("x"), ie.DEFAULT_HOLD_MS)
 
+    def test_wheel_pins_match_owner_report(self):
+        # Owner, Oct 2026: wheel down must read on (next), wheel up go back.
+        import config
+        self.assertEqual((config.ROCKER_NEXT_PIN, config.ROCKER_BACK_PIN), (39, 37))
+
     def test_config_default_is_valid(self):
         import config
         self.assertEqual(ie.clamp_hold_ms(config.HOME_HOLD_MS), config.HOME_HOLD_MS)

@@ -124,8 +124,9 @@ column** like a printed newspaper, then continues at the top of the next column:
 Column 1 is your day (priorities, adventure & weather, waiting & later), column 2
 the news (top story, more top stories, world), column 3 technology, local and
 notes. Rocker steps closer than 250 ms (`home_app.ROCKER_GUARD_MS`) are treated
-as switch bounce and ignored. Wheel direction itself was confirmed correct
-(up = back).
+as switch bounce and ignored. Wheel direction: after the column change the
+owner found up/down inverted, so `ROCKER_NEXT_PIN` is now G39 (wheel down)
+and `ROCKER_BACK_PIN` G37 (wheel up).
 
 ## Daily Paper editions (real news)
 

@@ -66,8 +66,10 @@ INTERACTIVE_EPD_MODE = 1        # page turns: 1 = GC16 (proven); 2 = text
                                 # mode, less flash, unverified on panel
 PAPER_PAN_FRAMES = 0            # 0 = clean stepped redraw (default);
                                 # N = N fast intermediate pan frames
-ROCKER_NEXT_PIN = 37            # wheel rocked right (M5Paper pin map)
-ROCKER_BACK_PIN = 39            # wheel rocked left; swap if reversed
+ROCKER_NEXT_PIN = 39            # wheel DOWN on the fridge-mounted Paper
+ROCKER_BACK_PIN = 37            # wheel UP. Swapped Oct 2026 after the owner
+                                # found 37/39 (M5Stack's "right/left")
+                                # inverted in portrait use.
 TOUCH_SWAP_XY = False           # GT911 orientation fixes, if the panel
 TOUCH_FLIP_X = False            # rotation and touch disagree
 TOUCH_FLIP_Y = False
